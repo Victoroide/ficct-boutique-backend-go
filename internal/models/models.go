@@ -150,6 +150,26 @@ type Order struct {
 	UpdatedAt time.Time
 }
 
+type PushPlatform string
+
+const (
+	PushPlatformIOS     PushPlatform = "ios"
+	PushPlatformAndroid PushPlatform = "android"
+	PushPlatformWeb     PushPlatform = "web"
+)
+
+type PushToken struct {
+	ID         uuid.UUID
+	UserID     uuid.UUID
+	Token      string
+	Platform   PushPlatform
+	DeviceID   *string
+	IsActive   bool
+	LastSeenAt time.Time
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
 type WebhookEvent struct {
 	ID            uuid.UUID
 	EventType     string

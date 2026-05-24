@@ -67,10 +67,12 @@ func main() {
 	orderRepo := repository.NewOrderRepo(pool)
 	reportsRepo := repository.NewReportsRepo(pool)
 	outboxRepo := repository.NewOutboxRepo(pool)
+	pushTokenRepo := repository.NewPushTokenRepo(pool)
 
 	authSvc := service.NewAuthService(userRepo, issuer)
 	catalogSvc := service.NewCatalogService(catalogRepo, branchRepo, invRepo)
 	reportsSvc := service.NewReportsService(reportsRepo)
+	pushSender := service.NewPushSender(cfg.ExpoPushAPIURL, cfg.ExpoPushAccessToken, pushTokenRepo)
 	salesSvc := service.NewSalesService(service.SalesServiceDeps{
 		Sales:            salesRepo,
 		Inventory:        invRepo,
@@ -88,16 +90,18 @@ func main() {
 	}
 
 	rootResolver := &graph.Resolver{
-		AuthSvc:     authSvc,
-		CatalogSvc:  catalogSvc,
-		SalesSvc:    salesSvc,
-		ReportsSvc:  reportsSvc,
-		UserRepo:    userRepo,
-		CatalogRepo: catalogRepo,
-		BranchRepo:  branchRepo,
-		InvRepo:     invRepo,
-		SalesRepo:   salesRepo,
-		OrderRepo:   orderRepo,
+		AuthSvc:       authSvc,
+		CatalogSvc:    catalogSvc,
+		SalesSvc:      salesSvc,
+		ReportsSvc:    reportsSvc,
+		PushSender:    pushSender,
+		UserRepo:      userRepo,
+		CatalogRepo:   catalogRepo,
+		BranchRepo:    branchRepo,
+		InvRepo:       invRepo,
+		SalesRepo:     salesRepo,
+		OrderRepo:     orderRepo,
+		PushTokenRepo: pushTokenRepo,
 	}
 
 	gqlSchema, err := graphqlgo.ParseSchema(embeddedSchema, rootResolver,

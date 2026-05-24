@@ -10,11 +10,13 @@ type Resolver struct {
 	CatalogSvc *service.CatalogService
 	SalesSvc   *service.SalesService
 	ReportsSvc *service.ReportsService
+	PushSender *service.PushSender
 
-	UserRepo    *repository.UserRepo
-	CatalogRepo *repository.CatalogRepo
-	BranchRepo  *repository.BranchRepo
-	InvRepo     *repository.InventoryRepo
-	SalesRepo   *repository.SalesRepo
-	OrderRepo   *repository.OrderRepo
+	UserRepo      *repository.UserRepo
+	CatalogRepo   *repository.CatalogRepo
+	BranchRepo    *repository.BranchRepo
+	InvRepo       *repository.InventoryRepo
+	SalesRepo     *repository.SalesRepo
+	OrderRepo     *repository.OrderRepo
+	PushTokenRepo *repository.PushTokenRepo
 }

@@ -3,6 +3,7 @@ package graph
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/ficct-boutique/backend-go/internal/middleware"
 	"github.com/ficct-boutique/backend-go/internal/models"
@@ -349,4 +350,126 @@ func (r *Resolver) ConfirmSale(ctx context.Context, args struct{ SaleID UUID }) 
 		return nil, err
 	}
 	return &OrderResolver{M: res.Order, R: r}, nil
+}
+
+func (r *Resolver) RegisterPushToken(ctx context.Context, args struct {
+	Input struct {
+		Token    string
+		Platform string
+		DeviceID *string
+	}
+}) (*PushTokenResolver, error) {
+	if err := requireAuth(ctx); err != nil {
+		return nil, err
+	}
+	claims, _ := middleware.ClaimsFromContext(ctx)
+	uid, err := uuid.Parse(claims.Subject)
+	if err != nil {
+		return nil, err
+	}
+
+	tok := strings.TrimSpace(args.Input.Token)
+	if tok == "" {
+		return nil, errors.New("token is required")
+	}
+	platform := models.PushPlatform(strings.ToLower(args.Input.Platform))
+	switch platform {
+	case models.PushPlatformIOS, models.PushPlatformAndroid, models.PushPlatformWeb:
+	default:
+		return nil, errors.New("platform must be ios, android, or web")
+	}
+
+	pt, err := r.PushTokenRepo.Upsert(ctx, uid, tok, platform, args.Input.DeviceID)
+	if err != nil {
+		return nil, err
+	}
+	return &PushTokenResolver{M: pt}, nil
+}
+
+func (r *Resolver) SendTestPushNotification(ctx context.Context, args struct {
+	Title string
+	Body  string
+}) (*SendPushResultResolver, error) {
+	if err := requireAuth(ctx); err != nil {
+		return nil, err
+	}
+	if r.PushSender == nil {
+		return nil, errors.New("push sender not configured")
+	}
+	claims, _ := middleware.ClaimsFromContext(ctx)
+	uid, err := uuid.Parse(claims.Subject)
+	if err != nil {
+		return nil, err
+	}
+	title := strings.TrimSpace(args.Title)
+	body := strings.TrimSpace(args.Body)
+	if title == "" || body == "" {
+		return nil, errors.New("title and body are required")
+	}
+	res, err := r.PushSender.SendTestToCaller(ctx, uid, title, body)
+	if err != nil {
+		return nil, err
+	}
+	return &SendPushResultResolver{
+		Sent_:        int32(res.Sent),
+		Failed_:      int32(res.Failed),
+		Deactivated_: int32(res.Deactivated),
+		Errors_:      res.Errors,
+	}, nil
+}
+
+func (r *Resolver) SendPushCampaign(ctx context.Context, args struct {
+	Input struct {
+		Title   string
+		Body    string
+		UserIDs *[]UUID
+	}
+}) (*SendPushResultResolver, error) {
+	// Campaigns reach other users — admin only.
+	if err := requireAdmin(ctx); err != nil {
+		return nil, err
+	}
+	if r.PushSender == nil {
+		return nil, errors.New("push sender not configured")
+	}
+	title := strings.TrimSpace(args.Input.Title)
+	body := strings.TrimSpace(args.Input.Body)
+	if title == "" || body == "" {
+		return nil, errors.New("title and body are required")
+	}
+	var userIDs []uuid.UUID
+	if args.Input.UserIDs != nil {
+		for _, id := range *args.Input.UserIDs {
+			userIDs = append(userIDs, id.Native())
+		}
+	}
+	res, err := r.PushSender.SendCampaignToUsers(ctx, userIDs, title, body, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &SendPushResultResolver{
+		Sent_:        int32(res.Sent),
+		Failed_:      int32(res.Failed),
+		Deactivated_: int32(res.Deactivated),
+		Errors_:      res.Errors,
+	}, nil
+}
+
+func (r *Resolver) UnregisterPushToken(ctx context.Context, args struct{ Token string }) (bool, error) {
+	if err := requireAuth(ctx); err != nil {
+		return false, err
+	}
+	claims, _ := middleware.ClaimsFromContext(ctx)
+	uid, err := uuid.Parse(claims.Subject)
+	if err != nil {
+		return false, err
+	}
+	tok := strings.TrimSpace(args.Token)
+	if tok == "" {
+		return false, errors.New("token is required")
+	}
+	if err := r.PushTokenRepo.Deactivate(ctx, uid, tok); err != nil {
+		return false, err
+	}
+	return true, nil
 }

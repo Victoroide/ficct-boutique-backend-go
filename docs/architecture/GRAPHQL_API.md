@@ -54,6 +54,7 @@ All queries are field resolvers on the root `Resolver`. The "Authz" column refer
 | `monthlySales(months: Int)` | default 12 | requireAdminOrStaff | Series for the dashboard chart. |
 | `popularProducts(limit: Int)` | default 10 | requireAdminOrStaff | Top sellers. |
 | `dashboardSummary` | — | requireAdminOrStaff | KPI tiles (today's sales, pending orders, low-stock count, etc.). |
+| `myPushTokens` | — | requireAuth | Active Expo push tokens belonging to the caller (used by the mobile notification center). |
 
 ---
 
@@ -78,6 +79,10 @@ All queries are field resolvers on the root `Resolver`. The "Authz" column refer
 | `setInventoryStock(variantId, branchId, quantity)` | admin or staff | Direct write. |
 | `adjustInventoryStock(variantId, branchId, delta)` | admin or staff | `quantity = quantity + delta`, clamped at 0. |
 | `updateInventoryReorderLevel(variantId, branchId, reorderLevel)` | admin or staff | |
+| `registerPushToken(input)` | requireAuth | Upserts an Expo push token for the caller. `input = { token, platform, deviceId? }`. `platform` is one of `ios`, `android`, `web`. Same `token` re-registered re-activates the row instead of duplicating. |
+| `unregisterPushToken(token)` | requireAuth | Soft-deactivates the matching row (`is_active=false`). Ownership is enforced — a token can only be deactivated by the user who owns it. Returns `true`. |
+| `sendTestPushNotification(title, body)` | requireAuth | Sends one push to **every active token owned by the caller**. Cannot reach anyone else. Returns `{ sent, failed, deactivated, errors }`. |
+| `sendPushCampaign(input)` | **requireAdmin** | Sends to every active token, or only to the listed `userIds`. `input = { title, body, userIds? }`. Customers and staff get `forbidden`. Returns `{ sent, failed, deactivated, errors }`. The sender deactivates tokens that Expo replies with `DeviceNotRegistered`. |
 
 ---
 

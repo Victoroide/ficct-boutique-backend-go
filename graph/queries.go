@@ -319,6 +319,27 @@ func (r *Resolver) PopularProducts(ctx context.Context, args struct{ Limit *int3
 	return out, nil
 }
 
+func (r *Resolver) MyPushTokens(ctx context.Context) ([]*PushTokenResolver, error) {
+	if err := requireAuth(ctx); err != nil {
+		return nil, err
+	}
+	claims, _ := middleware.ClaimsFromContext(ctx)
+	uid, err := uuid.Parse(claims.Subject)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := r.PushTokenRepo.ListActiveByUser(ctx, uid)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*PushTokenResolver, 0, len(rows))
+	for i := range rows {
+		row := rows[i]
+		out = append(out, &PushTokenResolver{M: &row})
+	}
+	return out, nil
+}
+
 func (r *Resolver) DashboardSummary(ctx context.Context) (*DashboardSummaryResolver, error) {
 	if err := requireAdminOrStaff(ctx); err != nil {
 		return nil, err

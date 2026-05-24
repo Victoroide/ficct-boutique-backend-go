@@ -51,6 +51,14 @@ func ClaimsFromContext(ctx context.Context) (*auth.Claims, bool) {
 	return c, ok
 }
 
+// ContextWithClaims is a test helper that injects claims into a context using
+// the same key as the HTTP middleware. Production code should never call
+// this; it exists so unit tests can exercise resolver RBAC without minting a
+// real JWT or running an HTTP server.
+func ContextWithClaims(ctx context.Context, claims *auth.Claims) context.Context {
+	return context.WithValue(ctx, claimsCtxKey, claims)
+}
+
 func extractBearer(r *http.Request) string {
 	h := r.Header.Get("Authorization")
 	if h == "" {

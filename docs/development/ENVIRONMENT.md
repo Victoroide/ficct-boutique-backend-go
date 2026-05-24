@@ -54,6 +54,13 @@ If the keys cannot be loaded, the server logs `fatal load keys` and exits.
 | `RATE_LIMIT_RPS` | `20` | Refill rate for the per-IP token bucket. |
 | `RATE_LIMIT_BURST` | `40` | Bucket capacity. |
 
+## Push notifications (Expo)
+
+| Variable | Default | Effect |
+|----------|---------|--------|
+| `EXPO_PUSH_API_URL` | `https://exp.host/--/api/v2/push/send` | Endpoint the `service.PushSender` posts campaign batches to. The full-stack docker compose overrides this to `http://fake-expo-push:8080/--/api/v2/push/send` so the meta-compose never touches the real Expo service. |
+| `EXPO_PUSH_ACCESS_TOKEN` | (empty) | Sent as `Authorization: Bearer …` when Expo's "Enhanced Push Security" is enabled for the project. Empty = no auth header. |
+
 The limiter applies to **all** routes including `/health` and `/static/products/...`. If you're running synthetic load tests, raise both values or disable the middleware in `cmd/server/main.go`.
 
 ## Notes on defaults

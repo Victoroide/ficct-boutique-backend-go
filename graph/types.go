@@ -281,3 +281,29 @@ func (r *DashboardSummaryResolver) PendingOrders() int32  { return r.PendingOrde
 func (r *DashboardSummaryResolver) LowStockCount() int32  { return r.LowStockCount_ }
 func (r *DashboardSummaryResolver) ActiveProducts() int32 { return r.ActiveProducts_ }
 func (r *DashboardSummaryResolver) ActiveBranches() int32 { return r.ActiveBranches_ }
+
+// ----- PushToken / SendPushResult -----
+
+type SendPushResultResolver struct {
+	Sent_        int32
+	Failed_      int32
+	Deactivated_ int32
+	Errors_      []string
+}
+
+func (r *SendPushResultResolver) Sent() int32        { return r.Sent_ }
+func (r *SendPushResultResolver) Failed() int32      { return r.Failed_ }
+func (r *SendPushResultResolver) Deactivated() int32 { return r.Deactivated_ }
+func (r *SendPushResultResolver) Errors() []string   { return r.Errors_ }
+
+type PushTokenResolver struct{ M *models.PushToken }
+
+func (r *PushTokenResolver) ID() UUID         { return UUIDFrom(r.M.ID) }
+func (r *PushTokenResolver) Token() string    { return r.M.Token }
+func (r *PushTokenResolver) Platform() string { return string(r.M.Platform) }
+func (r *PushTokenResolver) DeviceID() *string {
+	return r.M.DeviceID
+}
+func (r *PushTokenResolver) IsActive() bool   { return r.M.IsActive }
+func (r *PushTokenResolver) LastSeenAt() Time { return TimeFrom(r.M.LastSeenAt) }
+func (r *PushTokenResolver) CreatedAt() Time  { return TimeFrom(r.M.CreatedAt) }

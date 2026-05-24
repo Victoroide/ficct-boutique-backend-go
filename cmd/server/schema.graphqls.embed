@@ -4,6 +4,7 @@ scalar UUID
 enum Role { admin staff customer system }
 enum SaleStatus { pending confirmed cancelled }
 enum OrderStatus { placed preparing ready delivered cancelled }
+enum PushPlatform { ios android web }
 
 type AuthPayload {
   accessToken: String!
@@ -215,6 +216,35 @@ input CreateSaleInput {
   items: [CreateSaleItemInput!]!
 }
 
+type PushToken {
+  id: UUID!
+  token: String!
+  platform: PushPlatform!
+  deviceId: String
+  isActive: Boolean!
+  lastSeenAt: Time!
+  createdAt: Time!
+}
+
+input RegisterPushTokenInput {
+  token: String!
+  platform: PushPlatform!
+  deviceId: String
+}
+
+input SendPushCampaignInput {
+  title: String!
+  body: String!
+  userIds: [UUID!]
+}
+
+type SendPushResult {
+  sent: Int!
+  failed: Int!
+  deactivated: Int!
+  errors: [String!]!
+}
+
 type Query {
   me: User
   product(id: UUID!): Product
@@ -230,6 +260,7 @@ type Query {
   monthlySales(months: Int): [MonthlySalePoint!]!
   popularProducts(limit: Int): [PopularProductRow!]!
   dashboardSummary: DashboardSummary!
+  myPushTokens: [PushToken!]!
 }
 
 type Mutation {
@@ -252,6 +283,12 @@ type Mutation {
   setInventoryStock(variantId: UUID!, branchId: UUID!, quantity: Int!): InventoryEntry!
   adjustInventoryStock(variantId: UUID!, branchId: UUID!, delta: Int!): InventoryEntry!
   updateInventoryReorderLevel(variantId: UUID!, branchId: UUID!, reorderLevel: Int!): InventoryEntry!
+
+  registerPushToken(input: RegisterPushTokenInput!): PushToken!
+  unregisterPushToken(token: String!): Boolean!
+
+  sendTestPushNotification(title: String!, body: String!): SendPushResult!
+  sendPushCampaign(input: SendPushCampaignInput!): SendPushResult!
 }
 
 schema {

@@ -33,6 +33,9 @@ type Config struct {
 
 	RateLimitRPS   int
 	RateLimitBurst int
+
+	ExpoPushAPIURL      string
+	ExpoPushAccessToken string
 }
 
 func Load() (*Config, error) {
@@ -87,6 +90,8 @@ func Load() (*Config, error) {
 		WebhookMaxRetries:       maxRetries,
 		RateLimitRPS:            rps,
 		RateLimitBurst:          burst,
+		ExpoPushAPIURL:          getEnv("EXPO_PUSH_API_URL", "https://exp.host/--/api/v2/push/send"),
+		ExpoPushAccessToken:     os.Getenv("EXPO_PUSH_ACCESS_TOKEN"),
 	}, nil
 }
 

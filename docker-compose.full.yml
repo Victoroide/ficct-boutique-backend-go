@@ -33,6 +33,8 @@ services:
     depends_on:
       go-postgres:
         condition: service_healthy
+      fake-expo-push:
+        condition: service_healthy
     environment:
       DATABASE_URL: postgres://ficct:ficct@go-postgres:5432/ficct_boutique?sslmode=disable
       JWT_PRIVATE_KEY_PATH: /app/.tools/keys/jwt_private_dev.pem
@@ -40,16 +42,40 @@ services:
       JWT_ISSUER: ficct-go
       JWT_AUDIENCE: ficct-express,ficct-django,ficct-angular,ficct-mobile
       JWT_KEY_ID: dev-1
-      CORS_ALLOWED_ORIGINS: http://localhost:4200,http://localhost:19006
+      CORS_ALLOWED_ORIGINS: http://localhost:4200,http://localhost:19006,http://localhost:4300
       WEBHOOK_HMAC_SECRET: change-me-strong-random-secret
       APP_LOG_LEVEL: info
       APP_ENV: development
+      # Point the push sender at the fake Expo container instead of the real
+      # https://exp.host service. For production, unset this (default falls
+      # back to the real Expo URL).
+      EXPO_PUSH_API_URL: http://fake-expo-push:8080/--/api/v2/push/send
     ports:
       - "8093:8080"
     # Keys baked into the image (see Go Dockerfile + .dockerignore note).
     # Host port 8093 — host 8080/8090 often used by other dev stacks.
     command: >
       sh -c "migrate up && seed && server"
+
+  # Fake Expo Push API — emulates https://exp.host/--/api/v2/push/send so the
+  # full Docker stack can prove the server-side push sender without reaching
+  # the real Expo service. Inspector endpoint at /inspect/calls.
+  fake-expo-push:
+    build:
+      context: .
+      dockerfile: cmd/fake-expo-push/Dockerfile
+    image: ficct-boutique-fake-expo-push:full
+    container_name: ficct-full-fake-expo
+    environment:
+      FAKE_EXPO_MODE: per-token
+      PORT: "8080"
+    ports:
+      - "8095:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
   # ----- MS3: Express document backend -----
   docs-postgres:
