@@ -1,0 +1,44 @@
+# Binaries
+/bin/
+/dist/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test
+*.test
+*.out
+coverage.out
+
+# Env & secrets
+.env
+.env.local
+.env.*.local
+.tools/keys/*.pem
+!.tools/keys/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+
+# Go workspace
+go.work
+go.work.sum
+
+# generated
+graph/generated/
+
+# Ephemeral Playwright / browser-MCP output
+.playwright-mcp/
+test-results/
+
+# Stray screenshots accidentally left in the repo root.
+# QA evidence lives under docs/qa-artifacts/.
+/*.png
+/*.jpg
+/*.jpeg

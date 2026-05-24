@@ -1,0 +1,19 @@
+.git
+.gitignore
+.dockerignore
+Dockerfile
+docker-compose*.yml
+README.md
+docs/
+.idea/
+.vscode/
+.env
+.env.*
+*.test
+*.out
+coverage.out
+bin/
+dist/
+# Note: dev RSA keys under .tools/keys/ ARE included so the dev image is
+# self-contained (docker compose has no volume mount for them). For prod,
+# inject keys via Docker secrets or a KMS-backed mount.

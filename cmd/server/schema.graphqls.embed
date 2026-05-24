@@ -1,0 +1,260 @@
+scalar Time
+scalar UUID
+
+enum Role { admin staff customer system }
+enum SaleStatus { pending confirmed cancelled }
+enum OrderStatus { placed preparing ready delivered cancelled }
+
+type AuthPayload {
+  accessToken: String!
+  expiresAt: Time!
+  user: User!
+}
+
+type User {
+  id: UUID!
+  email: String!
+  fullName: String!
+  role: Role!
+  isActive: Boolean!
+  createdAt: Time!
+}
+
+type Collection {
+  id: UUID!
+  name: String!
+  description: String
+  season: String
+  isActive: Boolean!
+}
+
+type Product {
+  id: UUID!
+  sku: String!
+  name: String!
+  description: String
+  category: String!
+  basePrice: Float!
+  currency: String!
+  imageUrl: String
+  imageDocumentId: UUID
+  isActive: Boolean!
+  collection: Collection
+  variants: [Variant!]!
+  createdAt: Time!
+}
+
+type Variant {
+  id: UUID!
+  productId: UUID!
+  sku: String!
+  size: String!
+  color: String!
+  priceOverride: Float
+  isActive: Boolean!
+  stock: [InventoryEntry!]!
+}
+
+type Branch {
+  id: UUID!
+  code: String!
+  name: String!
+  address: String!
+  latitude: Float
+  longitude: Float
+  phone: String
+  isActive: Boolean!
+}
+
+type InventoryEntry {
+  id: UUID!
+  variantId: UUID!
+  branch: Branch!
+  variant: Variant
+  product: Product
+  quantity: Int!
+  reorderLevel: Int!
+  updatedAt: Time!
+}
+
+type SaleItem {
+  id: UUID!
+  variantId: UUID!
+  quantity: Int!
+  unitPrice: Float!
+  lineTotal: Float!
+}
+
+type Sale {
+  id: UUID!
+  status: SaleStatus!
+  subtotal: Float!
+  tax: Float!
+  total: Float!
+  currency: String!
+  branch: Branch!
+  items: [SaleItem!]!
+  confirmedAt: Time
+  createdAt: Time!
+}
+
+type Order {
+  id: UUID!
+  code: String!
+  status: OrderStatus!
+  sale: Sale!
+  notes: String
+  createdAt: Time!
+}
+
+type MonthlySalePoint {
+  month: Time!
+  totalSales: Float!
+  saleCount: Int!
+}
+
+type PopularProductRow {
+  productId: UUID!
+  productName: String!
+  unitsSold: Int!
+  revenue: Float!
+}
+
+type InventoryPage {
+  entries: [InventoryEntry!]!
+  total: Int!
+  limit: Int!
+  offset: Int!
+}
+
+input InventoryFilter {
+  branchId: UUID
+  search: String
+  size: String
+  color: String
+  status: String
+  onlyLowStock: Boolean
+  includeInactiveVariants: Boolean
+}
+
+type DashboardSummary {
+  todaySales: Float!
+  todayOrders: Int!
+  pendingOrders: Int!
+  lowStockCount: Int!
+  activeProducts: Int!
+  activeBranches: Int!
+}
+
+input LoginInput {
+  email: String!
+  password: String!
+}
+
+input CreateCollectionInput {
+  name: String!
+  description: String
+  season: String
+}
+
+input CreateProductInput {
+  collectionId: UUID
+  sku: String!
+  name: String!
+  description: String
+  category: String!
+  basePrice: Float!
+  currency: String
+  imageUrl: String
+  imageDocumentId: UUID
+}
+
+input UpdateProductInput {
+  id: UUID!
+  name: String!
+  description: String
+  category: String!
+  basePrice: Float!
+  imageUrl: String
+  imageDocumentId: UUID
+  isActive: Boolean!
+}
+
+input CreateVariantInput {
+  productId: UUID!
+  sku: String!
+  size: String!
+  color: String!
+  priceOverride: Float
+}
+
+input UpsertInventoryInput {
+  variantId: UUID!
+  branchId: UUID!
+  quantity: Int!
+  reorderLevel: Int!
+}
+
+input CreateBranchInput {
+  code: String!
+  name: String!
+  address: String!
+  latitude: Float
+  longitude: Float
+  phone: String
+}
+
+input CreateSaleItemInput {
+  variantId: UUID!
+  quantity: Int!
+}
+
+input CreateSaleInput {
+  customerId: UUID
+  branchId: UUID!
+  items: [CreateSaleItemInput!]!
+}
+
+type Query {
+  me: User
+  product(id: UUID!): Product
+  products(category: String, search: String, includeInactive: Boolean, limit: Int, offset: Int): [Product!]!
+  branches: [Branch!]!
+  branch(id: UUID!): Branch
+  inventoryByBranch(branchId: UUID!): [InventoryEntry!]!
+  inventoryEntries(filter: InventoryFilter, limit: Int, offset: Int): InventoryPage!
+  sale(id: UUID!): Sale
+  sales(status: String, limit: Int, offset: Int): [Sale!]!
+  order(id: UUID!): Order
+  orders(status: String, limit: Int, offset: Int): [Order!]!
+  monthlySales(months: Int): [MonthlySalePoint!]!
+  popularProducts(limit: Int): [PopularProductRow!]!
+  dashboardSummary: DashboardSummary!
+}
+
+type Mutation {
+  login(input: LoginInput!): AuthPayload!
+  createCollection(input: CreateCollectionInput!): Collection!
+  createProduct(input: CreateProductInput!): Product!
+  updateProduct(input: UpdateProductInput!): Product!
+  createVariant(input: CreateVariantInput!): Variant!
+  upsertInventory(input: UpsertInventoryInput!): InventoryEntry!
+  createBranch(input: CreateBranchInput!): Branch!
+  createSale(input: CreateSaleInput!): Sale!
+  confirmSale(saleId: UUID!): Order!
+
+  deactivateProduct(id: UUID!): Product!
+  activateProduct(id: UUID!): Product!
+  replaceProductImage(id: UUID!, newImageDocumentId: UUID!): Product!
+  deactivateVariant(id: UUID!): Variant!
+  activateVariant(id: UUID!): Variant!
+
+  setInventoryStock(variantId: UUID!, branchId: UUID!, quantity: Int!): InventoryEntry!
+  adjustInventoryStock(variantId: UUID!, branchId: UUID!, delta: Int!): InventoryEntry!
+  updateInventoryReorderLevel(variantId: UUID!, branchId: UUID!, reorderLevel: Int!): InventoryEntry!
+}
+
+schema {
+  query: Query
+  mutation: Mutation
+}
