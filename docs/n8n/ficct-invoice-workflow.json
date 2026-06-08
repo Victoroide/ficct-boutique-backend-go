@@ -25,7 +25,7 @@
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "const crypto = require('crypto');\n\nfunction env(name, fallback = '') {\n  if (typeof $env !== 'undefined' && $env?.[name]) return $env[name];\n  if (typeof process !== 'undefined' && process.env?.[name]) return process.env[name];\n  return fallback;\n}\n\nconst secret = env('WEBHOOK_HMAC_SECRET') || env('FICCT_WEBHOOK_HMAC_SECRET');\nif (!secret) {\n  throw new Error('WEBHOOK_HMAC_SECRET is required for FICCT invoice webhook validation');\n}\n\nconst input = $input.first();\nconst headers = input.json.headers || {};\nconst signatureHeader = headers['x-ficct-signature'] || headers['X-FICCT-Signature'];\nif (!signatureHeader) {\n  throw new Error('Missing x-ficct-signature header');\n}\n\nif (!input.binary?.data) {\n  throw new Error('Webhook raw body is missing; enable Raw Body on the Webhook node');\n}\n\nconst rawBody = await this.helpers.getBinaryDataBuffer(0, 'data');\nconst expected = 'sha256=' + crypto\n  .createHmac('sha256', secret)\n  .update(rawBody)\n  .digest('hex');\n\nconst actualBuffer = Buffer.from(String(signatureHeader), 'utf8');\nconst expectedBuffer = Buffer.from(expected, 'utf8');\nif (actualBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(actualBuffer, expectedBuffer)) {\n  throw new Error('Invalid FICCT webhook signature');\n}\n\nlet payload;\ntry {\n  payload = JSON.parse(rawBody.toString('utf8'));\n} catch (error) {\n  throw new Error('Webhook body is not valid JSON: ' + error.message);\n}\n\nconst required = [\n  ['event', payload.event],\n  ['sale_id', payload.sale_id],\n  ['order_id', payload.order_id],\n  ['order_code', payload.order_code],\n  ['items', payload.items],\n  ['total', payload.total],\n  ['currency', payload.currency],\n  ['branch_id', payload.branch_id],\n  ['confirmed_at', payload.confirmed_at],\n  ['customer.email', payload.customer?.email],\n  ['customer.name', payload.customer?.name],\n];\n\nconst missing = required\n  .filter(([name, value]) => value === undefined || value === null || value === '' || (name === 'items' && (!Array.isArray(value) || value.length === 0)))\n  .map(([name]) => name);\n\nif (payload.event !== 'sale.confirmed') {\n  throw new Error('Unsupported event: ' + payload.event);\n}\n\nif (missing.length) {\n  throw new Error('Missing required invoice payload field(s): ' + missing.join(', '));\n}\n\nreturn [{\n  json: {\n    ...payload,\n    webhook_event_id: headers['x-ficct-event-id'] || headers['X-FICCT-Event-Id'] || null,\n    raw_body_sha256: crypto.createHash('sha256').update(rawBody).digest('hex'),\n  },\n}];"
+        "jsCode": "const crypto = require('crypto');\n\nconst secret = $env.WEBHOOK_HMAC_SECRET;\nif (!secret) {\n  throw new Error('WEBHOOK_HMAC_SECRET env var is not set');\n}\n\nconst input = $input.first();\nconst headers = input.json.headers || {};\nconst signatureHeader = headers['x-ficct-signature'] || headers['X-FICCT-Signature'];\nif (!signatureHeader) {\n  throw new Error('Missing x-ficct-signature header');\n}\n\nif (!input.binary?.data) {\n  throw new Error('Webhook raw body is missing; enable Raw Body on the Webhook node');\n}\n\nconst rawBody = await this.helpers.getBinaryDataBuffer(0, 'data');\nconst expected = 'sha256=' + crypto\n  .createHmac('sha256', secret)\n  .update(rawBody)\n  .digest('hex');\n\nconst actualBuffer = Buffer.from(String(signatureHeader), 'utf8');\nconst expectedBuffer = Buffer.from(expected, 'utf8');\nif (actualBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(actualBuffer, expectedBuffer)) {\n  throw new Error('Invalid FICCT webhook signature');\n}\n\nlet payload;\ntry {\n  payload = JSON.parse(rawBody.toString('utf8'));\n} catch (error) {\n  throw new Error('Webhook body is not valid JSON: ' + error.message);\n}\n\nconst required = [\n  ['event', payload.event],\n  ['sale_id', payload.sale_id],\n  ['order_id', payload.order_id],\n  ['order_code', payload.order_code],\n  ['items', payload.items],\n  ['total', payload.total],\n  ['currency', payload.currency],\n  ['branch_id', payload.branch_id],\n  ['confirmed_at', payload.confirmed_at],\n  ['customer.email', payload.customer?.email],\n  ['customer.name', payload.customer?.name],\n];\n\nconst missing = required\n  .filter(([name, value]) => value === undefined || value === null || value === '' || (name === 'items' && (!Array.isArray(value) || value.length === 0)))\n  .map(([name]) => name);\n\nif (payload.event !== 'sale.confirmed') {\n  throw new Error('Unsupported event: ' + payload.event);\n}\n\nif (missing.length) {\n  throw new Error('Missing required invoice payload field(s): ' + missing.join(', '));\n}\n\nreturn [{\n  json: {\n    ...payload,\n    webhook_event_id: headers['x-ficct-event-id'] || headers['X-FICCT-Event-Id'] || null,\n    raw_body_sha256: crypto.createHash('sha256').update(rawBody).digest('hex'),\n  },\n}];"
       },
       "id": "5d093633-cba5-48e5-85b5-7df75eedf392",
       "name": "Validate HMAC and Payload",
@@ -54,7 +54,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{($env.GOTENBERG_URL || 'http://gotenberg:3000') + '/forms/chromium/convert/html'}}",
+        "url": "={{$env.GOTENBERG_URL}}/forms/chromium/convert/html",
         "sendHeaders": true,
         "specifyHeaders": "keypair",
         "headerParameters": {
@@ -98,7 +98,7 @@
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "const crypto = require('crypto');\n\nfunction env(name, fallback = '') {\n  if (typeof $env !== 'undefined' && $env?.[name]) return $env[name];\n  if (typeof process !== 'undefined' && process.env?.[name]) return process.env[name];\n  return fallback;\n}\n\nconst item = $input.first();\nif (!item.binary?.pdf) {\n  throw new Error('Gotenberg did not return binary PDF data in field \"pdf\"');\n}\n\nconst pdf = await this.helpers.getBinaryDataBuffer(0, 'pdf');\nif (pdf.length < 100 || pdf.subarray(0, 4).toString('utf8') !== '%PDF') {\n  throw new Error('Generated file is not a valid PDF');\n}\n\nconst binary = { ...item.binary };\ndelete binary.html;\nbinary.pdf = {\n  ...binary.pdf,\n  fileName: item.json.invoice_filename,\n  mimeType: 'application/pdf',\n};\n\nconst pdfSha256 = crypto.createHash('sha256').update(pdf).digest('hex');\nconst pdfSizeBytes = pdf.length;\nconst documentTitle = 'Factura ' + item.json.order_code + ' - FICCT Boutique';\nconst loginRequest = {\n  query: 'mutation Login($input: LoginInput!) { login(input: $input) { accessToken } }',\n  variables: {\n    input: {\n      email: env('FICCT_N8N_SERVICE_EMAIL', 'staff@ficct.local'),\n      password: env('FICCT_N8N_SERVICE_PASSWORD', 'Staff123!'),\n    },\n  },\n};\nconst uploadRequest = {\n  title: documentTitle,\n  description: 'Factura generada automaticamente para pedido ' + item.json.order_code,\n  category: 'pdf',\n  mimeType: 'application/pdf',\n  sizeBytes: pdfSizeBytes,\n  metadata: {\n    event: item.json.event,\n    saleId: item.json.sale_id,\n    orderId: item.json.order_id,\n    orderCode: item.json.order_code,\n    branchId: item.json.branch_id,\n    customer: item.json.customer,\n    pdfSha256,\n  },\n};\n\nreturn [{\n  json: {\n    ...item.json,\n    pdf_sha256: pdfSha256,\n    pdf_size_bytes: pdfSizeBytes,\n    document_title: documentTitle,\n    go_login_json: JSON.stringify(loginRequest),\n    ms3_upload_json: JSON.stringify(uploadRequest),\n    ms3_confirm_json: JSON.stringify({ sha256: pdfSha256 }),\n  },\n  binary,\n}];"
+        "jsCode": "const crypto = require('crypto');\n\nconst item = $input.first();\nif (!item.binary?.pdf) {\n  throw new Error('Gotenberg did not return binary PDF data in field \"pdf\"');\n}\n\nconst pdf = await this.helpers.getBinaryDataBuffer(0, 'pdf');\nif (pdf.length < 100 || pdf.subarray(0, 4).toString('utf8') !== '%PDF') {\n  throw new Error('Generated file is not a valid PDF');\n}\n\nconst binary = { ...item.binary };\ndelete binary.html;\nbinary.pdf = {\n  ...binary.pdf,\n  fileName: item.json.invoice_filename,\n  mimeType: 'application/pdf',\n};\n\nconst pdfSha256 = crypto.createHash('sha256').update(pdf).digest('hex');\nconst pdfSizeBytes = pdf.length;\nconst documentTitle = 'Factura ' + item.json.order_code + ' - FICCT Boutique';\nconst serviceEmail = $env.FICCT_N8N_SERVICE_EMAIL;\nconst servicePassword = $env.FICCT_N8N_SERVICE_PASSWORD;\nif (!serviceEmail || !servicePassword) {\n  throw new Error('FICCT_N8N_SERVICE_EMAIL/PASSWORD env vars are not set');\n}\nconst loginRequest = {\n  query: 'mutation Login($input: LoginInput!) { login(input: $input) { accessToken } }',\n  variables: {\n    input: {\n      email: serviceEmail,\n      password: servicePassword,\n    },\n  },\n};\nconst uploadRequest = {\n  title: documentTitle,\n  description: 'Factura generada automaticamente para pedido ' + item.json.order_code,\n  category: 'pdf',\n  mimeType: 'application/pdf',\n  sizeBytes: pdfSizeBytes,\n  metadata: {\n    event: item.json.event,\n    saleId: item.json.sale_id,\n    orderId: item.json.order_id,\n    orderCode: item.json.order_code,\n    branchId: item.json.branch_id,\n    customer: item.json.customer,\n    pdfSha256,\n  },\n};\n\nreturn [{\n  json: {\n    ...item.json,\n    pdf_sha256: pdfSha256,\n    pdf_size_bytes: pdfSizeBytes,\n    document_title: documentTitle,\n    go_login_json: JSON.stringify(loginRequest),\n    ms3_upload_json: JSON.stringify(uploadRequest),\n    ms3_confirm_json: JSON.stringify({ sha256: pdfSha256 }),\n  },\n  binary,\n}];"
       },
       "id": "9eb0edfb-db7c-4b76-a82c-21e4715f6c1b",
       "name": "Compute PDF SHA-256",
@@ -112,7 +112,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{$env.GO_CORE_GRAPHQL_URL || 'http://go-core:8080/graphql'}}",
+        "url": "={{$env.GO_CORE_GRAPHQL_URL}}",
         "sendBody": true,
         "contentType": "json",
         "specifyBody": "json",
@@ -176,7 +176,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{($env.EXPRESS_DOCS_URL || 'http://express-docs:8081') + '/api/v1/documents/upload-request'}}",
+        "url": "={{$env.EXPRESS_DOCS_URL}}/api/v1/documents/upload-request",
         "sendHeaders": true,
         "specifyHeaders": "keypair",
         "headerParameters": {
@@ -287,7 +287,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{($env.EXPRESS_DOCS_URL || 'http://express-docs:8081') + '/api/v1/documents/' + $json.document.id + '/confirm'}}",
+        "url": "={{$env.EXPRESS_DOCS_URL + '/api/v1/documents/' + $json.document.id + '/confirm'}}",
         "sendHeaders": true,
         "specifyHeaders": "keypair",
         "headerParameters": {
@@ -321,13 +321,28 @@
     },
     {
       "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const item = $input.first();\nif (!item.json.document?.id) {\n  throw new Error('MS3 confirm response did not include document.id');\n}\nreturn [{\n  json: {\n    confirmed_document: item.json.document,\n  },\n  binary: item.binary,\n}];"
+      },
+      "id": "0a447b3a-93f2-4be1-8490-77b6edc156b4",
+      "name": "Normalize Confirm Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3260,
+        -160
+      ]
+    },
+    {
+      "parameters": {
         "mode": "combine",
         "combineBy": "combineByPosition",
         "numberInputs": 2,
         "options": {
           "clashHandling": {
             "values": {
-              "resolveClash": "preferInput2",
+              "resolveClash": "preferInput1",
               "mergeMode": "deepMerge",
               "overrideEmpty": false
             }
@@ -346,7 +361,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "={{($env.EXPRESS_DOCS_URL || 'http://express-docs:8081') + '/api/v1/documents/' + $json.document.id + '/verify'}}",
+        "url": "={{$env.EXPRESS_DOCS_URL + '/api/v1/documents/' + $json.document.id + '/verify'}}",
         "sendHeaders": true,
         "specifyHeaders": "keypair",
         "headerParameters": {
@@ -376,13 +391,28 @@
     },
     {
       "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const item = $input.first();\nif (!item.json.document?.id) {\n  throw new Error('MS3 verify response did not include document.id');\n}\nreturn [{\n  json: {\n    verified_document: item.json.document,\n    intact: item.json.intact,\n    chainIntact: item.json.chainIntact,\n    storedSha: item.json.storedSha,\n    currentSha: item.json.currentSha,\n    brokenAt: item.json.brokenAt ?? null,\n  },\n  binary: item.binary,\n}];"
+      },
+      "id": "818574d8-2a3e-4610-9d72-ddbb2c793341",
+      "name": "Normalize Verify Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3780,
+        -160
+      ]
+    },
+    {
+      "parameters": {
         "mode": "combine",
         "combineBy": "combineByPosition",
         "numberInputs": 2,
         "options": {
           "clashHandling": {
             "values": {
-              "resolveClash": "preferInput2",
+              "resolveClash": "preferInput1",
               "mergeMode": "deepMerge",
               "overrideEmpty": false
             }
@@ -402,7 +432,7 @@
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "const item = $input.first();\nif (item.json.intact !== true || item.json.chainIntact !== true) {\n  throw new Error('MS3 hash ledger verification failed for invoice document');\n}\nif (item.json.document?.status !== 'active') {\n  throw new Error('MS3 invoice document is not active after confirmation');\n}\nif (!item.binary?.pdf) {\n  throw new Error('Invoice PDF binary is missing before email send');\n}\nif (!item.json.customer?.email) {\n  throw new Error('Missing customer.email before email send');\n}\n\nconst emailHtml = [\n  '<p>Hola ' + item.json.customer.name + ',</p>',\n  '<p>Adjuntamos la factura de tu pedido <strong>' + item.json.order_code + '</strong> en FICCT Boutique.</p>',\n  '<p><strong>Total:</strong> ' + Number(item.json.total).toFixed(2) + ' ' + item.json.currency + '</p>',\n  '<p>Gracias por tu compra.</p>',\n].join('\\n');\n\nreturn [{\n  json: {\n    ...item.json,\n    email_subject: 'Factura ' + item.json.order_code + ' - FICCT Boutique',\n    email_html: emailHtml,\n  },\n  binary: item.binary,\n}];"
+        "jsCode": "const item = $input.first();\nif (item.json.intact !== true || item.json.chainIntact !== true) {\n  throw new Error('MS3 hash ledger verification failed for invoice document');\n}\nif (item.json.verified_document?.status !== 'active') {\n  throw new Error('MS3 invoice document is not active after confirmation');\n}\nif (!item.binary?.pdf) {\n  throw new Error('Invoice PDF binary is missing before email send');\n}\nif (!item.json.customer?.email) {\n  throw new Error('Missing customer.email before email send');\n}\n\nconst emailHtml = [\n  '<p>Hola ' + item.json.customer.name + ',</p>',\n  '<p>Adjuntamos la factura de tu pedido <strong>' + item.json.order_code + '</strong> en FICCT Boutique.</p>',\n  '<p><strong>Total:</strong> ' + Number(item.json.total).toFixed(2) + ' ' + item.json.currency + '</p>',\n  '<p>Gracias por tu compra.</p>',\n].join('\\n');\n\nreturn [{\n  json: {\n    ...item.json,\n    email_subject: 'Factura ' + item.json.order_code + ' - FICCT Boutique',\n    email_html: emailHtml,\n  },\n  binary: item.binary,\n}];"
       },
       "id": "b9f7f6ac-cef7-4e94-98b9-ed6c86c59f59",
       "name": "Prepare Invoice Email",
@@ -417,7 +447,7 @@
       "parameters": {
         "resource": "email",
         "operation": "send",
-        "fromEmail": "={{$env.FICCT_INVOICE_FROM_EMAIL || 'facturas@ficct.local'}}",
+        "fromEmail": "={{$env.FICCT_INVOICE_FROM_EMAIL}}",
         "toEmail": "={{$json.customer.email}}",
         "subject": "={{$json.email_subject}}",
         "emailFormat": "html",
@@ -601,6 +631,17 @@
       "main": [
         [
           {
+            "node": "Normalize Confirm Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Confirm Result": {
+      "main": [
+        [
+          {
             "node": "Merge Confirm Result",
             "type": "main",
             "index": 1
@@ -625,6 +666,17 @@
       ]
     },
     "MS3 Verify Hash Ledger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Verify Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Verify Result": {
       "main": [
         [
           {

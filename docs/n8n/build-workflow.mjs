@@ -7,15 +7,9 @@ const here = dirname(fileURLToPath(import.meta.url));
 const validateHmacCode = String.raw`
 const crypto = require('crypto');
 
-function env(name, fallback = '') {
-  if (typeof $env !== 'undefined' && $env?.[name]) return $env[name];
-  if (typeof process !== 'undefined' && process.env?.[name]) return process.env[name];
-  return fallback;
-}
-
-const secret = env('WEBHOOK_HMAC_SECRET') || env('FICCT_WEBHOOK_HMAC_SECRET');
+const secret = $env.WEBHOOK_HMAC_SECRET;
 if (!secret) {
-  throw new Error('WEBHOOK_HMAC_SECRET is required for FICCT invoice webhook validation');
+  throw new Error('WEBHOOK_HMAC_SECRET env var is not set');
 }
 
 const input = $input.first();
@@ -230,12 +224,6 @@ return [{
 const computePdfCode = String.raw`
 const crypto = require('crypto');
 
-function env(name, fallback = '') {
-  if (typeof $env !== 'undefined' && $env?.[name]) return $env[name];
-  if (typeof process !== 'undefined' && process.env?.[name]) return process.env[name];
-  return fallback;
-}
-
 const item = $input.first();
 if (!item.binary?.pdf) {
   throw new Error('Gotenberg did not return binary PDF data in field "pdf"');
@@ -257,12 +245,17 @@ binary.pdf = {
 const pdfSha256 = crypto.createHash('sha256').update(pdf).digest('hex');
 const pdfSizeBytes = pdf.length;
 const documentTitle = 'Factura ' + item.json.order_code + ' - FICCT Boutique';
+const serviceEmail = $env.FICCT_N8N_SERVICE_EMAIL;
+const servicePassword = $env.FICCT_N8N_SERVICE_PASSWORD;
+if (!serviceEmail || !servicePassword) {
+  throw new Error('FICCT_N8N_SERVICE_EMAIL/PASSWORD env vars are not set');
+}
 const loginRequest = {
   query: 'mutation Login($input: LoginInput!) { login(input: $input) { accessToken } }',
   variables: {
     input: {
-      email: env('FICCT_N8N_SERVICE_EMAIL', 'staff@ficct.local'),
-      password: env('FICCT_N8N_SERVICE_PASSWORD', 'Staff123!'),
+      email: serviceEmail,
+      password: servicePassword,
     },
   },
 };
@@ -297,6 +290,37 @@ return [{
 }];
 `.trim();
 
+const normalizeConfirmCode = String.raw`
+const item = $input.first();
+if (!item.json.document?.id) {
+  throw new Error('MS3 confirm response did not include document.id');
+}
+return [{
+  json: {
+    confirmed_document: item.json.document,
+  },
+  binary: item.binary,
+}];
+`.trim();
+
+const normalizeVerifyCode = String.raw`
+const item = $input.first();
+if (!item.json.document?.id) {
+  throw new Error('MS3 verify response did not include document.id');
+}
+return [{
+  json: {
+    verified_document: item.json.document,
+    intact: item.json.intact,
+    chainIntact: item.json.chainIntact,
+    storedSha: item.json.storedSha,
+    currentSha: item.json.currentSha,
+    brokenAt: item.json.brokenAt ?? null,
+  },
+  binary: item.binary,
+}];
+`.trim();
+
 const extractTokenCode = String.raw`
 const item = $input.first();
 const token = item.json.data?.login?.accessToken;
@@ -318,7 +342,7 @@ const item = $input.first();
 if (item.json.intact !== true || item.json.chainIntact !== true) {
   throw new Error('MS3 hash ledger verification failed for invoice document');
 }
-if (item.json.document?.status !== 'active') {
+if (item.json.verified_document?.status !== 'active') {
   throw new Error('MS3 invoice document is not active after confirmation');
 }
 if (!item.binary?.pdf) {
@@ -390,7 +414,7 @@ const nodes = [
   {
     parameters: {
       method: 'POST',
-      url: "={{($env.GOTENBERG_URL || 'http://gotenberg:3000') + '/forms/chromium/convert/html'}}",
+      url: '={{$env.GOTENBERG_URL}}/forms/chromium/convert/html',
       sendHeaders: true,
       specifyHeaders: 'keypair',
       headerParameters: {
@@ -442,7 +466,7 @@ const nodes = [
   {
     parameters: {
       method: 'POST',
-      url: "={{$env.GO_CORE_GRAPHQL_URL || 'http://go-core:8080/graphql'}}",
+      url: '={{$env.GO_CORE_GRAPHQL_URL}}',
       sendBody: true,
       contentType: 'json',
       specifyBody: 'json',
@@ -497,7 +521,7 @@ const nodes = [
   {
     parameters: {
       method: 'POST',
-      url: "={{($env.EXPRESS_DOCS_URL || 'http://express-docs:8081') + '/api/v1/documents/upload-request'}}",
+      url: '={{$env.EXPRESS_DOCS_URL}}/api/v1/documents/upload-request',
       sendHeaders: true,
       specifyHeaders: 'keypair',
       headerParameters: {
@@ -596,7 +620,7 @@ const nodes = [
   {
     parameters: {
       method: 'POST',
-      url: "={{($env.EXPRESS_DOCS_URL || 'http://express-docs:8081') + '/api/v1/documents/' + $json.document.id + '/confirm'}}",
+      url: "={{$env.EXPRESS_DOCS_URL + '/api/v1/documents/' + $json.document.id + '/confirm'}}",
       sendHeaders: true,
       specifyHeaders: 'keypair',
       headerParameters: {
@@ -627,13 +651,25 @@ const nodes = [
   },
   {
     parameters: {
+      mode: 'runOnceForAllItems',
+      language: 'javaScript',
+      jsCode: normalizeConfirmCode,
+    },
+    id: '0a447b3a-93f2-4be1-8490-77b6edc156b4',
+    name: 'Normalize Confirm Result',
+    type: 'n8n-nodes-base.code',
+    typeVersion: 2,
+    position: [3260, -160],
+  },
+  {
+    parameters: {
       mode: 'combine',
       combineBy: 'combineByPosition',
       numberInputs: 2,
       options: {
         clashHandling: {
           values: {
-            resolveClash: 'preferInput2',
+            resolveClash: 'preferInput1',
             mergeMode: 'deepMerge',
             overrideEmpty: false,
           },
@@ -649,7 +685,7 @@ const nodes = [
   {
     parameters: {
       method: 'GET',
-      url: "={{($env.EXPRESS_DOCS_URL || 'http://express-docs:8081') + '/api/v1/documents/' + $json.document.id + '/verify'}}",
+      url: "={{$env.EXPRESS_DOCS_URL + '/api/v1/documents/' + $json.document.id + '/verify'}}",
       sendHeaders: true,
       specifyHeaders: 'keypair',
       headerParameters: {
@@ -676,13 +712,25 @@ const nodes = [
   },
   {
     parameters: {
+      mode: 'runOnceForAllItems',
+      language: 'javaScript',
+      jsCode: normalizeVerifyCode,
+    },
+    id: '818574d8-2a3e-4610-9d72-ddbb2c793341',
+    name: 'Normalize Verify Result',
+    type: 'n8n-nodes-base.code',
+    typeVersion: 2,
+    position: [3780, -160],
+  },
+  {
+    parameters: {
       mode: 'combine',
       combineBy: 'combineByPosition',
       numberInputs: 2,
       options: {
         clashHandling: {
           values: {
-            resolveClash: 'preferInput2',
+            resolveClash: 'preferInput1',
             mergeMode: 'deepMerge',
             overrideEmpty: false,
           },
@@ -711,7 +759,7 @@ const nodes = [
     parameters: {
       resource: 'email',
       operation: 'send',
-      fromEmail: "={{$env.FICCT_INVOICE_FROM_EMAIL || 'facturas@ficct.local'}}",
+      fromEmail: '={{$env.FICCT_INVOICE_FROM_EMAIL}}',
       toEmail: '={{$json.customer.email}}',
       subject: '={{$json.email_subject}}',
       emailFormat: 'html',
@@ -789,6 +837,9 @@ const workflow = {
       ]],
     },
     'MS3 Confirm Upload': {
+      main: [[{ node: 'Normalize Confirm Result', type: 'main', index: 0 }]],
+    },
+    'Normalize Confirm Result': {
       main: [[{ node: 'Merge Confirm Result', type: 'main', index: 1 }]],
     },
     'Merge Confirm Result': {
@@ -798,6 +849,9 @@ const workflow = {
       ]],
     },
     'MS3 Verify Hash Ledger': {
+      main: [[{ node: 'Normalize Verify Result', type: 'main', index: 0 }]],
+    },
+    'Normalize Verify Result': {
       main: [[{ node: 'Merge Verify Result', type: 'main', index: 1 }]],
     },
     'Merge Verify Result': {
