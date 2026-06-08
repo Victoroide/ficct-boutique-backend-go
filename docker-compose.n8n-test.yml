@@ -61,18 +61,18 @@ services:
       N8N_USER_MANAGEMENT_DISABLED: "true"
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
       NODE_FUNCTION_ALLOW_BUILTIN: crypto
-      DB_SQLITE_POOL_SIZE: "2"
-      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
-      EXECUTIONS_DATA_SAVE_ON_SUCCESS: all
-      EXECUTIONS_DATA_SAVE_ON_ERROR: all
-      EXECUTIONS_DATA_SAVE_ON_PROGRESS: "true"
       WEBHOOK_HMAC_SECRET: change-me-strong-random-secret
       GOTENBERG_URL: http://gotenberg:3000
       GO_CORE_GRAPHQL_URL: http://go-core:8080/graphql
       EXPRESS_DOCS_URL: http://express-docs:8081
       FICCT_N8N_SERVICE_EMAIL: staff@ficct.local
-      FICCT_N8N_SERVICE_PASSWORD: Staff123!
+      FICCT_N8N_SERVICE_PASSWORD: "Staff123!"
       FICCT_INVOICE_FROM_EMAIL: facturas@ficct.local
+      DB_SQLITE_POOL_SIZE: "2"
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
+      EXECUTIONS_DATA_SAVE_ON_SUCCESS: all
+      EXECUTIONS_DATA_SAVE_ON_ERROR: all
+      EXECUTIONS_DATA_SAVE_ON_PROGRESS: "true"
     ports:
       - "5678:5678"
     volumes:
@@ -98,6 +98,7 @@ services:
       PGDATABASE: ficct_boutique
     volumes:
       - ./docs/n8n:/work:ro
+      - n8n_data:/n8n-data:ro
 
 volumes:
   n8n_data:
