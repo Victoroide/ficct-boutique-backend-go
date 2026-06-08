@@ -36,8 +36,6 @@ services:
       - "8080:8080"
     # Keys are baked into the image via Dockerfile COPY. To rotate them
     # locally, rebuild: `docker compose build --no-cache app`.
-    command: >
-      sh -c "migrate up && seed && server"
     restart: unless-stopped
 
 volumes:

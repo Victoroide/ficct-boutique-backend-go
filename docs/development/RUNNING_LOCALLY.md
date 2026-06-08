@@ -25,7 +25,7 @@ docker compose up -d --build
 | `postgres` | `postgres:16-alpine` | (internal only) |
 | `app` | this Dockerfile | host `8080` |
 
-The `app` container's command runs `migrate up && seed && server`, so the database is always at the latest schema with demo data on first start. Re-running `docker compose up -d --build` rebuilds the binary and re-runs migrations idempotently (every migration file has a transactional up + down pair).
+The Go image entrypoint runs `migrate up`, then `seed`, then `server`, so the database is always at the latest schema with demo data on first start. Re-running `docker compose up -d --build` rebuilds the binary and re-runs migrations idempotently (every migration file has a transactional up + down pair).
 
 ### Smoke test
 
@@ -123,4 +123,4 @@ The volumes are named (`ficct_full_go_pg_data`, `ficct_full_docs_pg_data`, `ficc
 - **Login returns 401** — check that the RS256 public key file shared with Express/Django matches the private key Go is signing with. They must both point at the same logical `kid` (`dev-1` by default).
 - **`POST /graphql` returns 429** — rate limiter tripped. Increase `RATE_LIMIT_RPS` / `RATE_LIMIT_BURST` in `.env` and restart the `go-core` container.
 - **`confirmSale` returns "insufficient stock"** — expected when the variant's inventory at that branch is below the requested quantity. Either seed more or `setInventoryStock` first.
-- **Webhook never fires** — `WEBHOOK_INVOICE_URL` empty in the env. The dispatcher logs a single startup warning when this happens; events still accumulate in `outbox_events` until the URL is set.
+- **Webhook never fires** — `WEBHOOK_INVOICE_URL` empty in the env. The dispatcher logs a single startup warning when this happens; events still accumulate in `webhook_outbox` until the URL is set.

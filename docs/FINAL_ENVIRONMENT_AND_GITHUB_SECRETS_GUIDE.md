@@ -194,7 +194,7 @@ Variables: `GO_APP_ENV`, `GO_APP_LOG_LEVEL`, `GO_JWT_ISSUER`, `GO_JWT_AUDIENCE`,
   (or set `APP_PORT=8080` and expose 8080).
 - Provide the RSA private/public PEMs as Railway **variables/secret files**; mount and point
   `JWT_PRIVATE_KEY_PATH` / `JWT_PUBLIC_KEY_PATH` at them (do **not** bake prod keys into the image).
-- Run order on deploy: `migrate up && seed && server` (already the container command; `seed`
+- Run order on deploy: `migrate up && seed && server` (already enforced by the container entrypoint; `seed`
   is idempotent — consider dropping `seed` for production after first run).
 - Health check path: `/health`.
 
@@ -552,7 +552,7 @@ gh variable set EXPO_PROJECT_ID         --body <eas-project-uuid>             --
    backends; the private key only in Go.
 2. **Provision data stores:** Go Postgres (Railway), Express Postgres (RDS), AWS S3 private
    bucket, AWS DynamoDB tables (or rely on `ensure_tables` to create them).
-3. **Deploy Go core (MS1)** to Railway — run `migrate up && seed && server`. It is the auth
+3. **Deploy Go core (MS1)** to Railway — the Docker entrypoint runs `migrate up`, `seed`, then `server`. It is the auth
    issuer; everything else depends on its public key + issuer/audience.
 4. **Deploy Express (MS3)** to AWS — needs Go's public key, Postgres, S3.
 5. **Deploy Django (MS2)** to GCP — needs Go's public key, DynamoDB; run `ensure_tables`.
@@ -606,7 +606,7 @@ gh variable set EXPO_PROJECT_ID         --body <eas-project-uuid>             --
 7. **Development JWT keys are committed** in `.tools/keys/` for the demo. Generate fresh
    production keys, inject them as Secrets/mounted files, and never use the dev keys in
    production.
-8. **`seed` runs on Go startup** (`migrate up && seed && server`). It is idempotent but creates
+8. **`seed` runs on Go startup** after `migrate up` and before `server`. It is idempotent but creates
    demo users/catalog; remove `seed` from the production start command after the first run if
    you do not want demo data.
 9. **`EXPRESS_JWT_KEY_ID` is documentation-only** today (the verifier does not yet select keys

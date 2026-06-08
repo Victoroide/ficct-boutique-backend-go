@@ -16,7 +16,7 @@ Source of truth: [.env.example](../../.env.example) and [internal/config/config.
 |----------|----------|--------|
 | `DATABASE_URL` | yes | `postgres://user:pass@host:port/db?sslmode=disable` |
 
-The migration runner reads SQL files from `/app/migrations` (or `./migrations` outside the container). Migrations are not skippable — `cmd/migrate up` applies every unapplied file in lexicographic order.
+The migration runner reads SQL files from `MIGRATIONS_DIR` (default `migrations`). In the container the working directory is `/app`, so `MIGRATIONS_DIR=migrations` resolves to `/app/migrations`. Migrations are not skippable — the Docker entrypoint runs `cmd/migrate up` before `seed` and `server`, and applies every unapplied file in lexicographic order.
 
 ## JWT
 

@@ -29,6 +29,7 @@ COPY --from=builder /out/migrate /usr/local/bin/migrate
 COPY --from=builder /out/seed /usr/local/bin/seed
 COPY --chown=ficct:ficct migrations /app/migrations
 COPY --chown=ficct:ficct .tools/keys /app/.tools/keys
+COPY --chown=ficct:ficct docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 USER ficct
 EXPOSE 8080
@@ -36,4 +37,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD curl -fsS http://localhost:8080/health || exit 1
 
+ENTRYPOINT ["sh", "/usr/local/bin/docker-entrypoint.sh"]
 CMD ["server"]

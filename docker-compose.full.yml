@@ -54,8 +54,7 @@ services:
       - "8093:8080"
     # Keys baked into the image (see Go Dockerfile + .dockerignore note).
     # Host port 8093 — host 8080/8090 often used by other dev stacks.
-    command: >
-      sh -c "migrate up && seed && server"
+    # The Go Dockerfile entrypoint runs: migrate up -> seed -> server.
 
   # Fake Expo Push API — emulates https://exp.host/--/api/v2/push/send so the
   # full Docker stack can prove the server-side push sender without reaching

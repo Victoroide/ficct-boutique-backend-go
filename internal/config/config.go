@@ -11,10 +11,11 @@ import (
 )
 
 type Config struct {
-	AppEnv      string
-	AppPort     string
-	LogLevel    string
-	DatabaseURL string
+	AppEnv        string
+	AppPort       string
+	LogLevel      string
+	DatabaseURL   string
+	MigrationsDir string
 
 	JWTPrivateKeyPath string
 	JWTPublicKeyPath  string
@@ -78,6 +79,7 @@ func Load() (*Config, error) {
 		AppPort:                 getEnvAny([]string{"APP_PORT", "PORT", "GO_APP_PORT"}, "8080"),
 		LogLevel:                getEnvAny([]string{"APP_LOG_LEVEL", "GO_APP_LOG_LEVEL"}, "info"),
 		DatabaseURL:             dbURL,
+		MigrationsDir:           getEnvAny([]string{"MIGRATIONS_DIR", "GO_MIGRATIONS_DIR"}, "migrations"),
 		JWTPrivateKeyPath:       getEnvAny([]string{"JWT_PRIVATE_KEY_PATH", "GO_JWT_PRIVATE_KEY_PATH"}, "/app/.tools/keys/jwt_private_dev.pem"),
 		JWTPublicKeyPath:        getEnvAny([]string{"JWT_PUBLIC_KEY_PATH", "GO_JWT_PUBLIC_KEY_PATH"}, "/app/.tools/keys/jwt_public_dev.pem"),
 		JWTPrivateKeyPEM:        getEnvAny([]string{"JWT_PRIVATE_KEY_PEM", "GO_JWT_PRIVATE_KEY_PEM"}, ""),

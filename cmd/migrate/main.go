@@ -40,12 +40,8 @@ func main() {
 	}
 	defer pool.Close()
 
-	migDir := os.Getenv("MIGRATIONS_DIR")
-	if migDir == "" {
-		migDir = "migrations"
-	}
-
-	if err := database.RunMigrations(ctx, pool, migDir, direction); err != nil {
+	log.Info().Str("dir", cfg.MigrationsDir).Str("direction", string(direction)).Msg("running migrations")
+	if err := database.RunMigrations(ctx, pool, cfg.MigrationsDir, direction); err != nil {
 		log.Fatal().Err(err).Msg("migrate")
 	}
 	log.Info().Msg("migrations complete")

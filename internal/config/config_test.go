@@ -18,6 +18,7 @@ func TestLoadAcceptsGoPrefixedDeploymentEnv(t *testing.T) {
 	t.Setenv("GO_JWT_PUBLIC_KEY_PEM", "public-pem")
 	t.Setenv("JWT_KEY_ID", "")
 	t.Setenv("GO_JWT_KEY_ID", "prod-1")
+	t.Setenv("MIGRATIONS_DIR", "migrations")
 	t.Setenv("WEBHOOK_INVOICE_URL", "")
 	t.Setenv("GO_WEBHOOK_INVOICE_URL", "https://n8n.example/webhook/ficct-invoice")
 	t.Setenv("WEBHOOK_HMAC_SECRET", "")
@@ -30,6 +31,7 @@ func TestLoadAcceptsGoPrefixedDeploymentEnv(t *testing.T) {
 	require.Equal(t, "private-pem", cfg.JWTPrivateKeyPEM)
 	require.Equal(t, "public-pem", cfg.JWTPublicKeyPEM)
 	require.Equal(t, "prod-1", cfg.JWTKeyID)
+	require.Equal(t, "migrations", cfg.MigrationsDir)
 	require.Equal(t, "https://n8n.example/webhook/ficct-invoice", cfg.WebhookInvoiceURL)
 	require.Equal(t, "secret", cfg.WebhookHMACSecret)
 }

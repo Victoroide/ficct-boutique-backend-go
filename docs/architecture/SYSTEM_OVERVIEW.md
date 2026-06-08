@@ -55,7 +55,7 @@ The token carries: `sub` (user UUID), `email`, `role`, `iss=ficct-go`, `aud=ficc
 
 ### `sale.confirmed` webhook
 
-Go does **not** call the other services synchronously. When `confirmSale(saleId)` succeeds, the event is written to `outbox_events` in the same transaction, then the dispatcher goroutine drains the queue and POSTs to whichever URL `WEBHOOK_INVOICE_URL` points at (typically an n8n workflow that produces a PDF invoice and registers it in Express).
+Go does **not** call the other services synchronously. When `confirmSale(saleId)` succeeds, the event is written to `webhook_outbox` in the same transaction, then the dispatcher goroutine drains the queue and POSTs to whichever URL `WEBHOOK_INVOICE_URL` points at (typically an n8n workflow that produces a PDF invoice and registers it in Express).
 
 ```
 GraphQL: confirmSale
@@ -63,7 +63,7 @@ GraphQL: confirmSale
   ├── update sales.status = 'confirmed'
   ├── insert into orders ...
   ├── update inventory set quantity = quantity - $ where quantity >= $   -- aborts atomically if insufficient
-  ├── insert into outbox_events (event_type='sale.confirmed', payload=...)
+  ├── insert into webhook_outbox (event_type='sale.confirmed', payload=...)
   └── COMMIT
                 |
                 v
@@ -113,7 +113,7 @@ Angular and the mobile web container are **just** static asset servers — they 
 
 | Database | Owner | Notable tables |
 |----------|-------|----------------|
-| `ficct_boutique` (Postgres) | Go | `users`, `collections`, `products`, `product_variants`, `branches`, `inventory`, `sales`, `sale_items`, `orders`, `outbox_events`, plus refresh-token table |
+| `ficct_boutique` (Postgres) | Go | `users`, `collections`, `products`, `product_variants`, `branches`, `inventory`, `sales`, `sale_items`, `orders`, `webhook_outbox`, plus refresh-token table |
 | `ficct_documents` (Postgres) | Express | `documents`, `document_versions`, `document_uploads`, `audit_events`, `hash_ledger` |
 | `ficct_*` (DynamoDB Local, prefix `DYNAMODB_TABLE_PREFIX`) | Django | embedding records, forecast snapshots, customer cluster assignments |
 

@@ -2,7 +2,7 @@
 
 The Go service emits one webhook event today: `sale.confirmed`. The implementation lives in:
 
-- [internal/repository/outbox.go](../../internal/repository/outbox.go) — the `outbox_events` table.
+- [internal/repository/outbox.go](../../internal/repository/outbox.go) — the `webhook_outbox` table.
 - [internal/service/sales.go](../../internal/service/sales.go) — enqueues the event inside `confirmSale`'s transaction.
 - [internal/webhook/dispatcher.go](../../internal/webhook/dispatcher.go) — the background dispatcher goroutine.
 
@@ -12,7 +12,7 @@ There is **no other webhook event** in this codebase.
 
 Naïve approach: after committing the sale, do `http.Post(...)`. Problem: a crash between commit and POST means the event is lost; a crash between POST and ack means a duplicate. The outbox pattern avoids this:
 
-1. The `INSERT INTO outbox_events ...` is part of the same transaction that updates the sale and decrements inventory. Either all four writes happen or none do.
+1. The `INSERT INTO webhook_outbox ...` is part of the same transaction that updates the sale and decrements inventory. Either all four writes happen or none do.
 2. A separate goroutine reads unsent rows with `FOR UPDATE SKIP LOCKED`, attempts the POST, then updates `sent_at` (or increments `attempts`).
 3. Multiple replicas can run the dispatcher simultaneously — `SKIP LOCKED` ensures no two workers claim the same row.
 
@@ -38,7 +38,7 @@ X-FICCT-Signature: sha256=<hex(hmac_sha256(secret, raw_body))>
 }
 ```
 
-The exact payload structure is whatever `service.SalesService.confirmSale` writes into `outbox_events.payload`; treat the field list above as the **current** shape, not a stable contract — there are no consumers other than n8n / the optional invoice automation.
+The exact payload structure is whatever `service.SalesService.confirmSale` writes into `webhook_outbox.payload`; treat the field list above as the **current** shape, not a stable contract — there are no consumers other than n8n / the optional invoice automation.
 
 ## Verification (receiver side)
 
@@ -64,4 +64,4 @@ The receiver must use the **raw** request body (pre-JSON-parse) to compute the H
 
 ## Disabling
 
-If `WEBHOOK_INVOICE_URL` or `WEBHOOK_HMAC_SECRET` is empty at startup, the dispatcher does not start. Events still accumulate in `outbox_events` and will be processed on the next start when configuration is provided.
+If `WEBHOOK_INVOICE_URL` or `WEBHOOK_HMAC_SECRET` is empty at startup, the dispatcher does not start. Events still accumulate in `webhook_outbox` and will be processed on the next start when configuration is provided.

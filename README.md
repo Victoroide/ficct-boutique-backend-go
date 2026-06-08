@@ -158,7 +158,7 @@ Authorization is enforced inside each resolver via `requireAuth` / `requireAdmin
 
 ## Webhook (`sale.confirmed`)
 
-When `confirmSale(saleId)` succeeds, the service writes the event to the `outbox_events` table **inside the same SQL transaction** that creates the `Order` row. The dispatcher goroutine then:
+When `confirmSale(saleId)` succeeds, the service writes the event to the `webhook_outbox` table **inside the same SQL transaction** that creates the `Order` row. The dispatcher goroutine then:
 
 1. Selects unsent rows with `FOR UPDATE SKIP LOCKED` (so multiple replicas are safe).
 2. Signs `<sha256(secret + payload)>` with HMAC-SHA256.
@@ -168,7 +168,7 @@ When `confirmSale(saleId)` succeeds, the service writes the event to the `outbox
    - `X-FICCT-Signature: sha256=<hex>`
 4. On non-2xx response, increments `attempts` and re-queues with exponential backoff capped at 5 minutes, up to `WEBHOOK_MAX_RETRIES`.
 
-If `WEBHOOK_INVOICE_URL` or `WEBHOOK_HMAC_SECRET` is unset, the dispatcher does not start and a warning is logged at startup. The events still accumulate in the outbox and will be sent when configuration is provided.
+If `WEBHOOK_INVOICE_URL` or `WEBHOOK_HMAC_SECRET` is unset, the dispatcher does not start and a warning is logged at startup. The events still accumulate in `webhook_outbox` and will be sent when configuration is provided.
 
 ---
 
