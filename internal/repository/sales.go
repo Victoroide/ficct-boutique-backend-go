@@ -15,6 +15,12 @@ type SalesRepo struct {
 	pool *pgxpool.Pool
 }
 
+type CustomerContact struct {
+	ID    uuid.UUID
+	Name  string
+	Email string
+}
+
 func NewSalesRepo(pool *pgxpool.Pool) *SalesRepo {
 	return &SalesRepo{pool: pool}
 }
@@ -86,6 +92,21 @@ func (r *SalesRepo) Confirm(ctx context.Context, tx pgx.Tx, saleID uuid.UUID) (*
 		return nil, ErrNotFound
 	}
 	return s, err
+}
+
+func (r *SalesRepo) FindCustomerContact(ctx context.Context, tx pgx.Tx, customerID uuid.UUID) (*CustomerContact, error) {
+	const q = `SELECT c.id,
+		COALESCE(NULLIF(c.full_name, ''), u.full_name, '') AS name,
+		COALESCE(u.email, '') AS email
+		FROM customers c
+		LEFT JOIN users u ON u.id = c.user_id
+		WHERE c.id = $1`
+	c := &CustomerContact{}
+	err := tx.QueryRow(ctx, q, customerID).Scan(&c.ID, &c.Name, &c.Email)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	return c, err
 }
 
 func (r *SalesRepo) Find(ctx context.Context, id uuid.UUID) (*models.Sale, []models.SaleItem, error) {

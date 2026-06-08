@@ -48,10 +48,26 @@ func main() {
 	}
 
 	// 2. Customer demo user
-	if _, err := users.FindByEmail(ctx, "cliente@ficct.local"); err != nil {
+	customerUser, err := users.FindByEmail(ctx, "cliente@ficct.local")
+	if err != nil {
 		hash, _ := auth.HashPassword("Cliente123!")
-		if _, err := users.Create(ctx, "cliente@ficct.local", hash, "María Cliente", models.RoleCustomer); err != nil {
+		customerUser, err = users.Create(ctx, "cliente@ficct.local", hash, "Maria Cliente", models.RoleCustomer)
+		if err != nil {
 			log.Warn().Err(err).Msg("create customer")
+		}
+	}
+	if customerUser != nil {
+		if _, err := pool.Exec(ctx, `
+			INSERT INTO customers (id, user_id, full_name, phone, document_id, address)
+			VALUES ($1, $1, $2, $3, $4, $5)
+			ON CONFLICT (user_id) DO UPDATE
+			SET full_name = EXCLUDED.full_name,
+				phone = EXCLUDED.phone,
+				document_id = EXCLUDED.document_id,
+				address = EXCLUDED.address,
+				updated_at = NOW()
+		`, customerUser.ID, "Maria Cliente", "+59170000001", "CLI-001", "Santa Cruz, Bolivia"); err != nil {
+			log.Warn().Err(err).Msg("seed customer profile")
 		}
 	}
 

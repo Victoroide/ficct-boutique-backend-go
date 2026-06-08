@@ -49,7 +49,12 @@ func main() {
 	}
 	defer pool.Close()
 
-	keys, err := auth.LoadKeyPair(cfg.JWTPrivateKeyPath, cfg.JWTPublicKeyPath, cfg.JWTKeyID)
+	var keys *auth.KeyPair
+	if cfg.JWTPrivateKeyPEM != "" || cfg.JWTPublicKeyPEM != "" {
+		keys, err = auth.LoadKeyPairFromPEM(cfg.JWTPrivateKeyPEM, cfg.JWTPublicKeyPEM, cfg.JWTKeyID)
+	} else {
+		keys, err = auth.LoadKeyPair(cfg.JWTPrivateKeyPath, cfg.JWTPublicKeyPath, cfg.JWTKeyID)
+	}
 	if err != nil {
 		log.Fatal().Err(err).Msg("load keys")
 	}

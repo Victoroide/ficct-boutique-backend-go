@@ -106,6 +106,25 @@ type ConfirmSaleResult struct {
 	Order *models.Order
 }
 
+type SaleConfirmedCustomerPayload struct {
+	ID    *uuid.UUID `json:"id"`
+	Name  string     `json:"name"`
+	Email string     `json:"email"`
+}
+
+type SaleConfirmedWebhookPayload struct {
+	Event       string                       `json:"event"`
+	SaleID      uuid.UUID                    `json:"sale_id"`
+	OrderID     uuid.UUID                    `json:"order_id"`
+	OrderCode   string                       `json:"order_code"`
+	BranchID    uuid.UUID                    `json:"branch_id"`
+	Total       float64                      `json:"total"`
+	Currency    string                       `json:"currency"`
+	ConfirmedAt *time.Time                   `json:"confirmed_at"`
+	Items       []models.SaleItem            `json:"items"`
+	Customer    SaleConfirmedCustomerPayload `json:"customer"`
+}
+
 func (s *SalesService) ConfirmSale(ctx context.Context, saleID uuid.UUID) (*ConfirmSaleResult, error) {
 	tx, err := s.sales.Pool().Begin(ctx)
 	if err != nil {
@@ -139,17 +158,17 @@ func (s *SalesService) ConfirmSale(ctx context.Context, saleID uuid.UUID) (*Conf
 	}
 
 	if s.webhookTargetURL != "" {
-		payload := map[string]interface{}{
-			"event":        "sale.confirmed",
-			"sale_id":      confirmed.ID,
-			"order_id":     order.ID,
-			"order_code":   order.Code,
-			"branch_id":    confirmed.BranchID,
-			"total":        confirmed.Total,
-			"currency":     confirmed.Currency,
-			"confirmed_at": confirmed.ConfirmedAt,
-			"items":        items,
+		customer := SaleConfirmedCustomerPayload{ID: confirmed.CustomerID}
+		if confirmed.CustomerID != nil {
+			contact, err := s.sales.FindCustomerContact(ctx, tx, *confirmed.CustomerID)
+			if err != nil {
+				return nil, err
+			}
+			customer.Name = contact.Name
+			customer.Email = contact.Email
 		}
+
+		payload := buildSaleConfirmedWebhookPayload(confirmed, order, items, customer)
 		raw, err := json.Marshal(payload)
 		if err != nil {
 			return nil, err
@@ -163,4 +182,24 @@ func (s *SalesService) ConfirmSale(ctx context.Context, saleID uuid.UUID) (*Conf
 		return nil, err
 	}
 	return &ConfirmSaleResult{Sale: confirmed, Order: order}, nil
+}
+
+func buildSaleConfirmedWebhookPayload(
+	confirmed *models.Sale,
+	order *models.Order,
+	items []models.SaleItem,
+	customer SaleConfirmedCustomerPayload,
+) SaleConfirmedWebhookPayload {
+	return SaleConfirmedWebhookPayload{
+		Event:       "sale.confirmed",
+		SaleID:      confirmed.ID,
+		OrderID:     order.ID,
+		OrderCode:   order.Code,
+		BranchID:    confirmed.BranchID,
+		Total:       confirmed.Total,
+		Currency:    confirmed.Currency,
+		ConfirmedAt: confirmed.ConfirmedAt,
+		Items:       items,
+		Customer:    customer,
+	}
 }
