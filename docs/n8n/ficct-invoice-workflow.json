@@ -445,30 +445,68 @@
     },
     {
       "parameters": {
-        "resource": "email",
-        "operation": "send",
-        "fromEmail": "={{$env.FICCT_INVOICE_FROM_EMAIL}}",
-        "toEmail": "={{$json.customer.email}}",
-        "subject": "={{$json.email_subject}}",
-        "emailFormat": "html",
-        "html": "={{$json.email_html}}",
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const item = $input.first();\nconst pdf = await this.helpers.getBinaryDataBuffer(0, 'pdf');\nconst from = $env.FICCT_INVOICE_FROM_EMAIL;\nif (!from) {\n  throw new Error('FICCT_INVOICE_FROM_EMAIL env var is not set');\n}\nconst to = item.json.customer.email;\nconst subject = item.json.email_subject;\nconst filename = item.json.invoice_filename || ('factura-' + item.json.order_code + '.pdf');\nconst boundary = 'ficctses' + String(item.json.order_code).replace(/[^A-Za-z0-9]/g, '');\nconst pdfB64 = pdf.toString('base64').replace(/(.{76})/g, '$1\\r\\n');\nconst mime = [\n  'From: ' + from,\n  'To: ' + to,\n  'Subject: ' + subject,\n  'MIME-Version: 1.0',\n  'Content-Type: multipart/mixed; boundary=\"' + boundary + '\"',\n  '',\n  '--' + boundary,\n  'Content-Type: text/html; charset=UTF-8',\n  'Content-Transfer-Encoding: 7bit',\n  '',\n  item.json.email_html,\n  '',\n  '--' + boundary,\n  'Content-Type: application/pdf; name=\"' + filename + '\"',\n  'Content-Disposition: attachment; filename=\"' + filename + '\"',\n  'Content-Transfer-Encoding: base64',\n  '',\n  pdfB64,\n  '',\n  '--' + boundary + '--',\n  '',\n].join('\\r\\n');\nreturn [{\n  json: {\n    ses_from: from,\n    ses_to: to,\n    ses_raw_message: Buffer.from(mime, 'utf8').toString('base64'),\n  },\n}];"
+      },
+      "id": "7c2a1e90-1111-4aaa-9bbb-aae1f0c0d001",
+      "name": "Build SES Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4420,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{'https://email.' + ($env.FICCT_SES_REGION || 'us-east-1') + '.amazonaws.com/'}}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "aws",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "Action",
+              "value": "SendRawEmail"
+            },
+            {
+              "name": "Source",
+              "value": "={{$json.ses_from}}"
+            },
+            {
+              "name": "Destinations.member.1",
+              "value": "={{$json.ses_to}}"
+            },
+            {
+              "name": "RawMessage.Data",
+              "value": "={{$json.ses_raw_message}}"
+            }
+          ]
+        },
         "options": {
-          "attachments": "pdf",
-          "appendAttribution": false
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "ses_response"
+            }
+          }
         }
       },
       "id": "3a7489a3-57dc-4fb5-aa4a-cd084bc0210b",
       "name": "Send Invoice Email",
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2.1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
-        4420,
+        4680,
         0
       ],
       "credentials": {
-        "smtp": {
-          "id": "ficct-mailpit-smtp",
-          "name": "FICCT Mailpit SMTP"
+        "aws": {
+          "id": "ficct-ses-aws",
+          "name": "FICCT SES AWS"
         }
       }
     }
@@ -699,6 +737,17 @@
       ]
     },
     "Prepare Invoice Email": {
+      "main": [
+        [
+          {
+            "node": "Build SES Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build SES Email": {
       "main": [
         [
           {
