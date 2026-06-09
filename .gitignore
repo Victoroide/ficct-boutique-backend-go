@@ -17,6 +17,8 @@ coverage.out
 .env.*.local
 .tools/keys/*.pem
 !.tools/keys/.gitkeep
+# Local-only credential notes (never committed)
+*.local.md
 
 # OS
 .DS_Store
