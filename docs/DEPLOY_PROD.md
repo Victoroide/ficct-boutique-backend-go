@@ -39,6 +39,6 @@ Cloudflare CNAME to the Railway target.
 ```powershell
 curl.exe https://ficct-boutique-backend-go-production.up.railway.app/health
 # GraphQL login (service account)
-$body='{"query":"mutation Login($i:LoginInput!){login(input:$i){accessToken}}","variables":{"i":{"email":"staff@ficct.local","password":"Staff123!"}}}'
+$body='{"query":"mutation Login($i:LoginInput!){login(input:$i){accessToken}}","variables":{"i":{"email":"<service-email>","password":"<service-password>"}}}'
 Invoke-WebRequest -Uri "https://ficct-boutique-backend-go-production.up.railway.app/graphql" -Method Post -ContentType application/json -Body $body
 ```

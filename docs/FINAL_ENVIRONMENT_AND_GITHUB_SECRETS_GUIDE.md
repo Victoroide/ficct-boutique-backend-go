@@ -212,7 +212,7 @@ Variables: `GO_APP_ENV`, `GO_APP_LOG_LEVEL`, `GO_JWT_ISSUER`, `GO_JWT_AUDIENCE`,
 curl -fsS https://<go-host>/health
 # GraphQL login:
 curl -s -XPOST https://<go-host>/graphql -H 'content-type: application/json' \
-  -d '{"query":"mutation($i:LoginInput!){login(input:$i){accessToken user{role}}}","variables":{"i":{"email":"admin@ficct.local","password":"Admin123!"}}}'
+  -d '{"query":"mutation($i:LoginInput!){login(input:$i){accessToken user{role}}}","variables":{"i":{"email":"<admin-email>","password":"<admin-password>"}}}'
 ```
 
 ---
@@ -412,7 +412,7 @@ from these (or rely on the reverse-proxy relative paths and not inject at all).
 
 ### Verification steps (Angular)
 
-- Load the site → redirected to `/login`; log in as `admin@ficct.local` → dashboard charts
+- Load the site → redirected to `/login`; log in as `<admin-email>` → dashboard charts
   render. Confirm Network tab shows GraphQL `200`s and document/AI calls succeed (CORS OK).
 - DevTools console must be error-free; verify responsive layout at 1440/1024/768/430/390/360.
 

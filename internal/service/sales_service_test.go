@@ -54,7 +54,7 @@ func TestSaleConfirmedWebhookPayloadIncludesCustomerContact(t *testing.T) {
 		SaleConfirmedCustomerPayload{
 			ID:    &customerID,
 			Name:  "Maria Cliente",
-			Email: "cliente@ficct.local",
+			Email: "customer@example.test",
 		},
 	)
 
@@ -76,7 +76,7 @@ func TestSaleConfirmedWebhookPayloadIncludesCustomerContact(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, customerID.String(), customer["id"])
 	require.Equal(t, "Maria Cliente", customer["name"])
-	require.Equal(t, "cliente@ficct.local", customer["email"])
+	require.Equal(t, "customer@example.test", customer["email"])
 
 	require.Contains(t, string(raw), `"VariantID"`, "item JSON keeps the existing SaleItem field casing")
 }

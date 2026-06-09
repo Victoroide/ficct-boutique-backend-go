@@ -65,8 +65,8 @@ services:
       GOTENBERG_URL: http://gotenberg:3000
       GO_CORE_GRAPHQL_URL: http://go-core:8080/graphql
       EXPRESS_DOCS_URL: http://express-docs:8081
-      FICCT_N8N_SERVICE_EMAIL: staff@ficct.local
-      FICCT_N8N_SERVICE_PASSWORD: "Staff123!"
+      FICCT_N8N_SERVICE_EMAIL: ${FICCT_N8N_SERVICE_EMAIL}
+      FICCT_N8N_SERVICE_PASSWORD: ${FICCT_N8N_SERVICE_PASSWORD}
       FICCT_INVOICE_FROM_EMAIL: facturas@ficct.local
       DB_SQLITE_POOL_SIZE: "2"
       N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"

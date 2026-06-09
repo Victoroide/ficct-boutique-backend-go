@@ -135,9 +135,11 @@ The seed (`cmd/seed`) is idempotent and produces:
 
 | Email | Password | Role |
 |-------|----------|------|
-| `admin@ficct.local` | `Admin123!` | admin |
-| `staff@ficct.local` | `Staff123!` | staff |
-| `cliente@ficct.local` | `Cliente123!` | customer |
+| `<seed-admin-email>` | `<seed-admin-password>` | admin |
+| `<seed-staff-email>` | `<seed-staff-password>` | staff |
+| `<seed-customer-email>` | `<seed-customer-password>` | customer |
+
+> Real credentials are provisioned via the seed env vars (`SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD`, `SEED_STAFF_EMAIL`/`SEED_STAFF_PASSWORD`, `SEED_CUSTOMER_EMAIL`/`SEED_CUSTOMER_PASSWORD`, etc.) and kept in a local, git-ignored `TEST_ACCOUNTS.local.md`.
 
 Plus 2 branches (`SC-01 Boutique Centro`, `SC-02 Boutique Equipetrol`), 1 collection (`Otoño 2026`), and 4 products (`BLZ-001`, `PNT-001`, `VST-001`, `FLD-001`) each with 6 size×color variants and per-branch stock of 12 units (reorder level 3).
 

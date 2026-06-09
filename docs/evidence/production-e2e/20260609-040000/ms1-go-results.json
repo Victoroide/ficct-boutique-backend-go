@@ -3,12 +3,12 @@
     "login": {
       "staff": {
         "id": "7fb2180d-11d1-4de8-aeb9-14ad3588b05c",
-        "email": "staff@ficct.local",
+        "email": "staff@ficct.example",
         "role": "staff"
       },
       "customer": {
         "id": "e42bac99-9f34-4505-8018-5e0809a7cf5a",
-        "email": "cliente@ficct.local",
+        "email": "cliente@ficct.example",
         "role": "customer"
       }
     },

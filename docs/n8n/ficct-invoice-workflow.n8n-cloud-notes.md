@@ -31,7 +31,7 @@ To adapt the workflow for n8n Cloud:
    - Express/MS3: `https://<express-service>`
    - Gotenberg: `https://<gotenberg-service>`
 2. Do not expose Gotenberg publicly without protection. Prefer self-hosted n8n and Gotenberg in the same private network, or deploy Gotenberg behind HTTPS and authentication/network allow-listing.
-3. Replace the local service account (`staff@ficct.local` / `Staff123!`) with a dedicated production staff/admin service account.
+3. Replace the local service account (`<staff-email>` / `<staff-password>`) with a dedicated production staff/admin service account.
 4. Replace Mailpit SMTP with a real SMTP, SendGrid SMTP, SES SMTP or equivalent n8n email credential.
 5. Replace the local HMAC secret with the same production secret configured in Go `WEBHOOK_HMAC_SECRET`.
 6. Ensure presigned MS3 upload URLs are reachable by n8n Cloud exactly as returned by Express/MS3.

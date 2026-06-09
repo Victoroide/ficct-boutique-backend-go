@@ -17,11 +17,11 @@ responsive/     Same admin screens at 390x844 (phone) and 768x1024 (tablet)
 
 | File | Captured from | Notes |
 |------|---------------|-------|
-| `admin-ui/admin-dashboard-1440x900.png` | Angular admin, `/admin/dashboard` | Logged in as `admin@ficct.local`. |
+| `admin-ui/admin-dashboard-1440x900.png` | Angular admin, `/admin/dashboard` | Logged in as `<admin-email>`. |
 | `admin-ui/admin-products-1440x900.png` | Angular admin, `/admin/products` | Product list. |
 | `admin-ui/admin-products-with-actions-1440x900.png` | Same screen with row actions visible. | |
 | `inventory/admin-inventory-1440x900.png` | Angular admin, `/admin/inventory` | Per-branch grid with the search/filter inputs. |
-| `customer-ui/customer-catalog-after-login-390x844.png` | React Native web at `localhost:4300`, signed in as `cliente@ficct.local`. | |
+| `customer-ui/customer-catalog-after-login-390x844.png` | React Native web at `localhost:4300`, signed in as `<customer-email>`. | |
 | `customer-ui/customer-catalog-with-images-390x844.png` | Same screen showing the seeded `/static/products/*.svg` placeholders. | |
 | `responsive/admin-dashboard-390x844.png` | Admin dashboard at phone width. | |
 | `responsive/admin-products-390x844.png` | Admin products at phone width. | |

@@ -98,7 +98,7 @@ ficct-full-mobile      ficct-boutique-mobile-web:full             Up (healthy)  
 
 ```bash
 RESP=$(curl -s -X POST http://localhost:8093/graphql -H "Content-Type: application/json" \
-  -d '{"query":"mutation { login(input:{email:\"cliente@ficct.local\",password:\"Cliente123!\"}) { accessToken } }"}')
+  -d '{"query":"mutation { login(input:{email:\"<customer-email>\",password:\"<customer-password>\"}) { accessToken } }"}')
 TOKEN=$(echo "$RESP" | node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf-8')).data.login.accessToken)")
 
 # Register a good Expo push token
@@ -124,7 +124,7 @@ curl -s -X POST http://localhost:8093/graphql \
 curl -s -X POST http://localhost:8095/inspect/reset
 
 ADMIN=$(curl -s -X POST http://localhost:8093/graphql -H "Content-Type: application/json" \
-  -d '{"query":"mutation { login(input:{email:\"admin@ficct.local\",password:\"Admin123!\"}) { accessToken } }"}' \
+  -d '{"query":"mutation { login(input:{email:\"<admin-email>\",password:\"<admin-password>\"}) { accessToken } }"}' \
   | node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf-8')).data.login.accessToken)")
 
 # Register a BAD token (fake Expo will return DeviceNotRegistered for it)
@@ -177,7 +177,7 @@ npm run e2e
 | 1 | login screen renders | password input is visible |
 | 2 | customer logs in and reaches catalog | "Catálogo" text appears post-login |
 | 3 | Avisos tab renders the real notification center | header "Centro de notificaciones" visible; **old placeholder copy is GONE**; one of the documented `state-*` testIDs is rendered |
-| 4 | session card exposes seeded customer + logout | `cliente@ficct.local` + "Cerrar sesión" both visible |
+| 4 | session card exposes seeded customer + logout | `<customer-email>` + "Cerrar sesión" both visible |
 | 5 | the screen never shows a raw GraphQL error | no `ApolloError` / `Network error` text in DOM |
 | 6 | admin login also reaches Avisos with the real screen | admin can navigate same surface |
 

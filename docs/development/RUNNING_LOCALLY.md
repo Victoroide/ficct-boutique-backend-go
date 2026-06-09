@@ -39,7 +39,7 @@ GraphQL login:
 ```powershell
 curl -X POST http://localhost:8080/graphql `
   -H "Content-Type: application/json" `
-  -d '{\"query\":\"mutation { login(input:{email:\\\"admin@ficct.local\\\",password:\\\"Admin123!\\\"}) { accessToken expiresAt user { id email role } } }\"}'
+  -d '{\"query\":\"mutation { login(input:{email:\\\"<admin-email>\\\",password:\\\"<admin-password>\\\"}) { accessToken expiresAt user { id email role } } }\"}'
 ```
 
 ---
@@ -112,8 +112,8 @@ The volumes are named (`ficct_full_go_pg_data`, `ficct_full_docs_pg_data`, `ficc
 
 ## Talking to it from a host browser
 
-- Angular admin: `http://localhost:4200`, sign in with `admin@ficct.local / Admin123!`.
-- Customer mobile web: `http://localhost:4300`, sign in with `cliente@ficct.local / Cliente123!`. The nginx in front of this container reverse-proxies `/graphql` to the Go container and `/api/ai/...` to Django, so the React Native code uses same-origin paths and CORS is never the limiting factor in dev.
+- Angular admin: `http://localhost:4200`, sign in with `<admin-email> / <admin-password>` (see local `TEST_ACCOUNTS.local.md`).
+- Customer mobile web: `http://localhost:4300`, sign in with `<customer-email> / <customer-password>` (see local `TEST_ACCOUNTS.local.md`). The nginx in front of this container reverse-proxies `/graphql` to the Go container and `/api/ai/...` to Django, so the React Native code uses same-origin paths and CORS is never the limiting factor in dev.
 - GraphiQL: `http://localhost:8093/playground`.
 
 ---

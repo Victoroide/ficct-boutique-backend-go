@@ -10,7 +10,7 @@
   "viewport": "390x844",
   "scenarios": {
     "home": "pass — app boots on web (SecureStore/native shims OK), customer entry screen",
-    "login": "pass — customer login cliente@ficct.local via Go GraphQL, navigates to Catálogo",
+    "login": "pass — customer login cliente@ficct.example via Go GraphQL, navigates to Catálogo",
     "catalog": "pass — 4 real products from Go (Falda BOB 290, Vestido BOB 620, Pantalón BOB 480, Blusa BOB 350), each 6 variantes; tab bar Catálogo/Buscar/Carrito/Sucursales/Avisos",
     "productDetail": "pass — SKU FLD-001, BOB 290, 6 variants with size·color·stock (e.g. L·blanco 23 en stock)",
     "cart": "pass — line item + quantity controls, Subtotal BOB 290.00, IVA 13% BOB 37.70, Total BOB 327.70, Confirmar pedido",

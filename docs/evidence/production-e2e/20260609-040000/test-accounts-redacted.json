@@ -1,8 +1,8 @@
 {
   "note": "Seeded dev/demo accounts (cmd/seed/main.go). Passwords are NOT stored here; full credentials are in the git-ignored TEST_ACCOUNTS.local.md and reported to the user only.",
   "accounts": [
-    { "role": "admin", "email": "admin@ficct.local", "password": "REDACTED", "use": "Angular Admin (dashboard, products, inventory, sales, documents, audit, AI)" },
-    { "role": "customer", "email": "cliente@ficct.local", "password": "REDACTED", "use": "React Native mobile customer flows" },
-    { "role": "staff", "email": "staff@ficct.local", "password": "REDACTED", "use": "n8n automation service account (Go login + MS3)" }
+    { "role": "admin", "email": "admin@ficct.example", "password": "REDACTED", "use": "Angular Admin (dashboard, products, inventory, sales, documents, audit, AI)" },
+    { "role": "customer", "email": "cliente@ficct.example", "password": "REDACTED", "use": "React Native mobile customer flows" },
+    { "role": "staff", "email": "staff@ficct.example", "password": "REDACTED", "use": "n8n automation service account (Go login + MS3)" }
   ]
 }

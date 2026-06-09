@@ -11,6 +11,17 @@ const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL || 'http://n8n:5678/webhook/
 const MAILPIT_API_URL = process.env.MAILPIT_API_URL || 'http://mailpit:8025';
 const N8N_SQLITE_PATH = process.env.N8N_SQLITE_PATH || '/n8n-data/.n8n/database.sqlite';
 
+function requireEnv(name) {
+  const value = process.env[name];
+  if (!value) throw new Error(`Missing required environment variable: ${name}`);
+  return value;
+}
+
+const E2E_STAFF_EMAIL = requireEnv('E2E_STAFF_EMAIL');
+const E2E_STAFF_PASSWORD = requireEnv('E2E_STAFF_PASSWORD');
+const E2E_CUSTOMER_EMAIL = requireEnv('E2E_CUSTOMER_EMAIL');
+const E2E_CUSTOMER_PASSWORD = requireEnv('E2E_CUSTOMER_PASSWORD');
+
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function retry(label, fn, { attempts = 60, delayMs = 2000 } = {}) {
@@ -230,8 +241,8 @@ async function main() {
 
   await clearMailpit();
 
-  const customerLogin = await login('cliente@ficct.local', 'Cliente123!');
-  const staffLogin = await login('staff@ficct.local', 'Staff123!');
+  const customerLogin = await login(E2E_CUSTOMER_EMAIL, E2E_CUSTOMER_PASSWORD);
+  const staffLogin = await login(E2E_STAFF_EMAIL, E2E_STAFF_PASSWORD);
   const customerToken = customerLogin.accessToken;
   const staffToken = staffLogin.accessToken;
   const customerId = customerIdForEmail(customerLogin.user.email) || customerLogin.user.id;
@@ -290,7 +301,7 @@ async function main() {
     const messages = await mailpitMessages();
     return messages.find((msg) =>
       messageSubject(msg).includes(`Factura ${orderCode} - FICCT Boutique`) &&
-      messageRecipients(msg).includes('cliente@ficct.local'));
+      messageRecipients(msg).includes(E2E_CUSTOMER_EMAIL.toLowerCase()));
   }, { attempts: 75, delayMs: 2000 });
 
   const detail = await messageDetail(messageId(message));

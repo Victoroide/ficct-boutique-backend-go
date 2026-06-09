@@ -16,6 +16,17 @@ const MS3 = 'https://bptu80mcbk.execute-api.us-east-1.amazonaws.com';
 const MS3_DOMAIN = 'https://docs-api-boutique.ficct.com';
 const MS2 = 'https://ficct-ai-1093089304525.us-central1.run.app';
 
+function requireEnv(name) {
+  const value = process.env[name];
+  if (!value) throw new Error(`Missing required environment variable: ${name}`);
+  return value;
+}
+
+const E2E_STAFF_EMAIL = requireEnv('E2E_STAFF_EMAIL');
+const E2E_STAFF_PASSWORD = requireEnv('E2E_STAFF_PASSWORD');
+const E2E_CUSTOMER_EMAIL = requireEnv('E2E_CUSTOMER_EMAIL');
+const E2E_CUSTOMER_PASSWORD = requireEnv('E2E_CUSTOMER_PASSWORD');
+
 const here = dirname(fileURLToPath(import.meta.url));
 const stamp = new Date().toISOString().replace(/[:T]/g, '').slice(0, 15).replace(/(\d{8})(\d{6})/, '$1-$2');
 const out = join(here, stamp);
@@ -52,8 +63,8 @@ console.log('endpoints', JSON.stringify(endpoints));
 // ---------- MS1 Go core ----------
 const ms1 = { steps: {} };
 try {
-  const staff = (await gql('mutation L($i:LoginInput!){login(input:$i){accessToken user{id email role}}}', { i: { email: 'staff@ficct.local', password: 'Staff123!' } })).login;
-  const customer = (await gql('mutation L($i:LoginInput!){login(input:$i){accessToken user{id email role}}}', { i: { email: 'cliente@ficct.local', password: 'Cliente123!' } })).login;
+  const staff = (await gql('mutation L($i:LoginInput!){login(input:$i){accessToken user{id email role}}}', { i: { email: E2E_STAFF_EMAIL, password: E2E_STAFF_PASSWORD } })).login;
+  const customer = (await gql('mutation L($i:LoginInput!){login(input:$i){accessToken user{id email role}}}', { i: { email: E2E_CUSTOMER_EMAIL, password: E2E_CUSTOMER_PASSWORD } })).login;
   ms1.steps.login = { staff: staff.user, customer: customer.user };
   const sToken = staff.accessToken, cToken = customer.accessToken;
 

@@ -25,7 +25,7 @@ n8n's own public webhook is `n8n-production-6287.up.railway.app`. Correct and wo
 
 ## Angular Admin (deployed, real browser)
 
-Desktop 1440x900 + responsive 768x1024. Admin login `admin@ficct.local`.
+Desktop 1440x900 + responsive 768x1024. Admin login `admin@ficct.example`.
 
 | Page | Result |
 |---|---|
@@ -43,7 +43,7 @@ and MS2 (Cloud Run) allowed origins.
 
 ## React Native mobile (Expo web export, 390x844)
 
-Customer login `cliente@ficct.local`.
+Customer login `cliente@ficct.example`.
 
 | Screen | Result |
 |---|---|

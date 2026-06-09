@@ -93,7 +93,7 @@ func startFakeExpo(t *testing.T) (*httptest.Server, *[][]service.ExpoMessage) {
 func claimsFor(role auth.Role, sub uuid.UUID) *auth.Claims {
 	return &auth.Claims{
 		Role:  role,
-		Email: string(role) + "@ficct.local",
+		Email: string(role) + "@example.test",
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject: sub.String(),
 		},
