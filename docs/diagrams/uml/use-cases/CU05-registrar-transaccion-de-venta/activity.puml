@@ -1,0 +1,62 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+|Cliente / Personal Logistico|
+start
+:Selecciona variantes\ny cantidades;
+note right
+  Cliente usa Cart (React Native)
+  Personal/Administrador usa
+  pantalla de ventas (Angular Admin)
+end note
+:Inicia registro de venta;
+
+|Boundary GraphQL\n(/graphql)|
+:Recibe mutation createSale\ncon items {variantId, quantity};
+
+|Go SalesService\n(sales_service.go)|
+:Valida sesion y rol\n(JWT: customer / staff / admin);
+:Para cada item:\nconsulta stock de la variante;
+
+|NeonDB\n(PostgreSQL)|
+:Lee ProductVariant.stock;
+
+|Go SalesService\n(sales_service.go)|
+if (Ã‚Â¿Stock suficiente\npara todos los items?) then (no)
+  |Boundary GraphQL\n(/graphql)|
+  :Responde error\n"stock insuficiente";
+  |Cliente / Personal Logistico|
+  :Muestra mensaje de error;
+  stop
+else (si)
+  |Go SalesService\n(sales_service.go)|
+  :Calcula totales\ny arma Sale + SaleItems;
+  :Crea Sale en estado pending;
+
+  |NeonDB\n(PostgreSQL)|
+  :Inserta Sale (pending)\ny SaleItems asociados;
+
+  |Boundary GraphQL\n(/graphql)|
+  :Responde Sale creada\n(estado pending);
+
+  |Cliente / Personal Logistico|
+  :Muestra venta pendiente\n(lista para confirmar);
+  note right
+    La confirmacion (confirmSale)
+    y la emision de factura
+    corresponden a CU06 / CU07
+  end note
+  stop
+endif
+@enduml

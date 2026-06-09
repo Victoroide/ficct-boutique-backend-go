@@ -1,0 +1,65 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+|Usuario|
+start
+:Abrir pantalla de inicio de sesion\n(Angular Admin o app React Native);
+:Ingresar correo y contrasena;
+
+|Boundary (AuthService / auth.context)|
+:Enviar mutation login\n(POST /graphql);
+
+|Go AuthService\n(auth_service.go)|
+:Buscar usuario por correo;
+
+|NeonDB (PostgreSQL)|
+:Consultar tabla users\n(users.go);
+
+|Go AuthService\n(auth_service.go)|
+if (usuario existe?) then (si)
+  if (user.IsActive?) then (si)
+    :Verificar contrasena con bcrypt\n(VerifyPassword);
+    if (contrasena valida?) then (si)
+      :Emitir JWT RS256\ncon claim de rol (admin/staff/customer);
+    else (no)
+      :Devolver error 401\ncredenciales invalidas;
+      |Boundary (AuthService / auth.context)|
+      :Mostrar error de credenciales;
+      |Usuario|
+      stop
+    endif
+  else (no)
+    |Go AuthService\n(auth_service.go)|
+    :Devolver error\n"user is inactive";
+    |Boundary (AuthService / auth.context)|
+    :Mostrar cuenta inactiva\n(rotada / legacy);
+    |Usuario|
+    stop
+  endif
+else (no)
+  |Go AuthService\n(auth_service.go)|
+  :Devolver error 401\ncredenciales invalidas;
+  |Boundary (AuthService / auth.context)|
+  :Mostrar error de credenciales;
+  |Usuario|
+  stop
+endif
+
+|Boundary (AuthService / auth.context)|
+:Almacenar JWT y\nadjuntarlo en peticiones siguientes;
+
+|Usuario|
+:Acceder a la aplicacion\nsegun su rol;
+stop
+@enduml

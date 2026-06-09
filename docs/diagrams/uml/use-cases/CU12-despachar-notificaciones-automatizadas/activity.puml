@@ -1,0 +1,81 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+|Cliente|
+start
+:Abre NotificationsScreen\n(app React Native);
+:requestPermission()\n(notifications.service);
+if (Permiso concedido?) then (si)
+  :getExpoPushTokenAsync()\n(expo-notifications);
+  note right
+    Honesto: el export web NO puede
+    generar un Expo push token real;
+    se requiere dispositivo / EAS para
+    la entrega on-device.
+  end note
+  if (Token real obtenido?) then (si)
+    |Go PushSender / Resolver|
+    :registerPushToken(token)\n(mutation GraphQL);
+    |NeonDB|
+    :Persiste PushToken\n(push_tokens, migration 0004)\nis_active = true;
+  else (no, export web)
+    |Cliente|
+    :No hay token de dispositivo;\nsin registro;
+    stop
+  endif
+else (no)
+  |Cliente|
+  :Sin permiso de notificaciones;\nsin registro;
+  stop
+endif
+
+|Administrador|
+:Abre ai-analytics (Angular Admin);
+:Selecciona un segmento de clientes\n(clustering KMeans RFM);
+|DynamoDB|
+:Lee userIds del segmento\n(ficct_customer_segments);
+|Administrador|
+:Lanza campania\nsendPushCampaign(input{title, body, userIds});
+
+|Go PushSender / Resolver|
+:Resuelve PushTokens activos\nde los userIds objetivo;
+|NeonDB|
+:Consulta PushToken por usuario\n(solo is_active = true);
+
+|Go PushSender / Resolver|
+:Arma mensajes y aplica chunking\n(push_sender.go);
+repeat
+  :Envia chunk a Expo Push API;
+  |Expo Push API|
+  :Procesa lote\ny entrega a dispositivos;
+  |Go PushSender / Resolver|
+  if (Receipt DeviceNotRegistered?) then (si)
+    |NeonDB|
+    :Desactiva PushToken\n(is_active = false);
+    |Go PushSender / Resolver|
+    :Contabiliza deactivated++;
+  else (no)
+    if (Entrega ok?) then (si)
+      :Contabiliza sent++;
+    else (no)
+      :Contabiliza failed++\ny registra error;
+    endif
+  endif
+repeat while (Quedan chunks?) is (si) not (no)
+
+:Agrega resultado\nSendPushResult{sent, failed, deactivated, errors};
+|Administrador|
+:Visualiza resumen de la campania;
+stop
+@enduml

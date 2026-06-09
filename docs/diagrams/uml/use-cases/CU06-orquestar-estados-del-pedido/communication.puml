@@ -1,0 +1,40 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+left to right direction
+
+actor "Cliente /\nPersonal Logistico" as Actor
+boundary "GraphQL Endpoint\n(/graphql)" as Boundary
+control "SalesService\n(sales_service.go)" as Sales
+entity "Sale / Order\n(orders.go)" as Order
+control "WebhookDispatcher\n(dispatcher.go)" as Dispatcher
+entity "WebhookOutbox\n(webhook_outbox)" as Outbox
+database "NeonDB\n(PostgreSQL)" as DB
+boundary "n8n webhook\n(/webhook/ficct-invoice)" as N8N
+
+Actor --> Boundary : 1: confirmSale(saleId)
+Boundary --> Sales : 2: confirmSale(saleId)
+Sales --> Order : 3: transicion pending -> confirmed
+Sales --> Order : 4: crear Order code ORD-YYYYMMDD-####
+Sales --> DB : 5: persistir Sale(confirmed) + Order
+Sales --> Outbox : 6: enqueue fila (estado pending)
+Outbox --> DB : 7: INSERT webhook_outbox
+Boundary --> Actor : 8: pedido confirmado (Order code)
+Dispatcher --> Outbox : 9: leer pendientes (por intervalo)
+Outbox --> DB : 10: SELECT pendientes
+Dispatcher --> Dispatcher : 11: firmar HMAC-SHA256\n(X-FICCT-Signature: sha256=<hex>)
+Dispatcher --> N8N : 12: POST WEBHOOK_INVOICE_URL (body firmado)
+Dispatcher --> Outbox : 13: marcar entregada / reintentar
+Outbox --> DB : 14: UPDATE estado / intento
+@enduml

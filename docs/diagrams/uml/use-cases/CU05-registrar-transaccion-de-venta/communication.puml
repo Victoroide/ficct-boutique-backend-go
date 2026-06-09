@@ -1,0 +1,32 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+left to right direction
+
+actor "Cliente (movil)\no Personal / Administrador" as Cliente
+boundary "GraphQL Endpoint\n(/graphql)" as Boundary
+control "SalesService\n(sales_service.go)" as Sales
+entity "ProductVariant / Sale\n(catalog.go, orders.go)" as Sale
+database "NeonDB\n(PostgreSQL)" as DB
+
+Cliente --> Boundary : 1: createSale(items)
+Boundary --> Sales : 2: createSale(input)
+Sales --> Sale : 3: consultar stock de variante
+Sale --> DB : 4: SELECT stock ProductVariant
+DB --> Sale : 5: stock disponible
+Sales --> Sale : 6: crear Sale(pending) + SaleItems
+Sale --> DB : 7: INSERT Sale (pending) + SaleItems
+Sales --> Boundary : 8: Sale (estado pending)\n[alt: error stock insuficiente]
+Boundary --> Cliente : 9: venta pendiente / error
+@enduml

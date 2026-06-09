@@ -1,0 +1,50 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+autonumber "<b>0"
+
+actor Administrador as Admin
+boundary "Angular ai-analytics\n(ai-analytics)" as UI
+control "ClusteringController\n(clustering/run/)" as Ctrl
+control "clustering_service\n(KMeans scikit-learn RFM)" as Svc
+entity "ficct_cluster_runs\nficct_customer_segments" as Seg
+database "DynamoDB" as Dynamo
+
+Admin -> UI : Ejecutar segmentacion de clientes
+UI -> Ctrl : POST /api/v1/clustering/run/\n(JWT RS256, rol admin/staff)
+
+alt JWT invalido o sin rol admin/staff
+  Ctrl --> UI : 401/403 (IsAdminOrStaff)
+  UI --> Admin : Mostrar error de autorizacion
+else Autorizado
+  Ctrl -> Svc : run()
+  Svc -> Svc : Construir features RFM\n(Recency, Frequency, Monetary)
+  Svc -> Svc : Ejecutar KMeans\n(scikit-learn)
+  Svc -> Seg : Guardar corrida y asignaciones
+  Seg -> Dynamo : put ficct_cluster_runs
+  Seg -> Dynamo : put ficct_customer_segments
+  Dynamo --> Seg : ok
+  Seg --> Svc : confirmado
+  Svc --> Ctrl : resultado (segmentos + asignaciones)
+  Ctrl --> UI : 200 (corrida completada)
+
+  UI -> Ctrl : GET /api/v1/clustering/segments/
+  Ctrl -> Seg : Leer segmentos
+  Seg -> Dynamo : query ficct_customer_segments
+  Dynamo --> Seg : segmentos
+  Seg --> Ctrl : segmentos
+  Ctrl --> UI : 200 (segmentos)
+  UI --> Admin : Tabla de segmentos + scatter RFM
+end
+@enduml

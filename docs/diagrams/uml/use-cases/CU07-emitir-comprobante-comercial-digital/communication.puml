@@ -1,0 +1,48 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+left to right direction
+
+actor "Cliente /\nPersonal Logistico" as Cliente
+boundary "GraphQL endpoint\n(/graphql)" as GQL
+control "SalesService\n(sales_service.go)" as Sales
+entity "Order / WebhookOutbox\n(orders.go / migr. 0001)" as Outbox
+database "NeonDB" as Neon
+control "WebhookDispatcher\n(dispatcher.go)" as Dispatcher
+boundary "n8n webhook\n(/webhook/ficct-invoice)" as N8N
+control "Gotenberg\n(convert/html)" as Gotenberg
+control "Subsistema Documental\nMS3 (document.service.ts)" as MS3
+entity "S3 + hash_ledger\n(ficct-boutique-documents)" as Doc
+control "AWS SES\n(SendRawEmail)" as SES
+
+Cliente --> GQL : 1: confirmSale()
+GQL --> Sales : 2: confirmSale()
+Sales --> Outbox : 3: enqueue outbox
+Outbox --> Neon : 4: INSERT webhook_outbox
+Dispatcher --> Outbox : 5: leer fila pendiente
+Dispatcher --> N8N : 6: POST firmado HMAC-SHA256\n(X-FICCT-Signature)
+N8N --> N8N : 7: validar HMAC (timingSafeEqual)
+N8N --> Gotenberg : 8: POST convert/html
+Gotenberg --> N8N : 9: PDF bytes
+N8N --> GQL : 10: login cuenta servicio
+N8N --> MS3 : 11: upload-request
+MS3 --> N8N : 12: URL presignada
+N8N --> Doc : 13: PUT PDF (S3 presigned)
+N8N --> MS3 : 14: confirm(sha256)
+MS3 --> Doc : 15: anexar hash_ledger
+N8N --> MS3 : 16: verify hash ledger
+MS3 --> N8N : 17: {intact, chainIntact}
+N8N --> SES : 18: SendRawEmail dev@ficct.com
+SES --> Cliente : 19: comprobante al correo
+@enduml

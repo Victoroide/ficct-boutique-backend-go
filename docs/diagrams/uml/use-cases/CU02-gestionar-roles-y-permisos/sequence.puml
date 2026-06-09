@@ -1,0 +1,77 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+autonumber "<b>0"
+
+actor Administrador as Admin
+boundary "Angular Admin\n(login.component + AuthService)" as Boundary
+control "Go AuthService\n(auth_service.go)" as Auth
+entity "User\n(users.go)" as User
+database "NeonDB\n(PostgreSQL)" as DB
+control "MS3 requireRoles\n(document.controller.ts)" as MS3
+control "MS2 IsAdminOrStaff\n(Django AI)" as MS2
+
+== Autenticacion y emision de JWT con claim de rol ==
+
+Admin -> Boundary : Inicia sesion (usuario / password)
+Boundary -> Auth : login (mutation Apollo, POST /graphql)
+Auth -> User : Busca usuario por email
+User -> DB : SELECT user
+DB --> User : Registro de usuario (rol asignado en seed/creacion)
+User --> Auth : Usuario (IsActive, hash, role)
+
+alt Usuario activo y credenciales validas
+  Auth -> Auth : VerifyPassword (bcrypt)
+  Auth --> Boundary : JWT RS256 con claim role\n(admin / staff / customer)
+  Boundary --> Admin : Sesion iniciada
+else Usuario inactivo o credenciales invalidas
+  Auth --> Boundary : Error de autenticacion
+  Boundary --> Admin : Login rechazado
+end
+
+== Autorizacion por rol en cada operacion protegida ==
+
+Admin -> Boundary : Solicita operacion protegida
+Boundary -> Auth : Peticion con JWT (Authorization Bearer)
+
+alt Operacion en Go Core
+  Auth -> Auth : Resolver guard lee claim role del JWT
+  alt Rol autorizado
+    Auth -> DB : Ejecuta operacion protegida
+    DB --> Auth : Resultado
+    Auth --> Boundary : Respuesta autorizada
+  else Rol insuficiente
+    Auth --> Boundary : forbidden / 403
+  end
+else Operacion en MS3 Documentos
+  Boundary -> MS3 : Peticion con JWT
+  MS3 -> MS3 : requireRoles valida claim role
+  alt Rol permitido
+    MS3 --> Boundary : Respuesta + AuditEntry
+  else Rol insuficiente
+    MS3 --> Boundary : 403 forbidden
+  end
+else Operacion en MS2 IA
+  Boundary -> MS2 : Peticion con JWT
+  MS2 -> MS2 : IsAuthenticated + IsAdminOrStaff
+  alt Rol admin o staff
+    MS2 --> Boundary : Respuesta de IA
+  else Rol insuficiente
+    MS2 --> Boundary : 403 forbidden
+  end
+end
+
+Boundary --> Admin : Resultado de la operacion
+
+@enduml

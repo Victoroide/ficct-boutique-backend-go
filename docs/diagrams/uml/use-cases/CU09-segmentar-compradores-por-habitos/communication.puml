@@ -1,0 +1,36 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+left to right direction
+
+actor Administrador as Admin
+boundary "Angular ai-analytics" as UI
+control "ClusteringController\n(clustering/run/)" as Ctrl
+control "clustering_service\n(KMeans scikit-learn RFM)" as Svc
+entity "ficct_cluster_runs\nficct_customer_segments" as Seg
+database "DynamoDB" as Dynamo
+
+Admin --> UI : 1: ejecutar segmentacion
+UI --> Ctrl : 2: POST /clustering/run/ (JWT rol admin/staff)
+Ctrl --> Svc : 3: run()
+Svc --> Svc : 4: construir features RFM
+Svc --> Svc : 5: KMeans (scikit-learn)
+Svc --> Seg : 6: guardar corrida y asignaciones
+Seg --> Dynamo : 7: put ficct_cluster_runs
+Seg --> Dynamo : 8: put ficct_customer_segments
+Ctrl --> Seg : 9: GET /clustering/segments/
+Seg --> Dynamo : 10: query ficct_customer_segments
+Ctrl --> UI : 11: segmentos
+UI --> Admin : 12: tabla + scatter RFM
+@enduml

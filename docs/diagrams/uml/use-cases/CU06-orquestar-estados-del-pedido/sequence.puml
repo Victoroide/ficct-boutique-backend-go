@@ -1,0 +1,68 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+autonumber "<b>"
+
+actor "Cliente /\nPersonal Logistico" as Actor
+boundary "GraphQL Endpoint\n(/graphql, schema.graphqls)" as Boundary
+control "SalesService\n(sales_service.go)" as Sales
+entity "Sale / Order\n(orders.go)" as Order
+database "NeonDB\n(PostgreSQL)" as DB
+control "WebhookDispatcher\n(dispatcher.go)" as Dispatcher
+entity "WebhookOutbox\n(webhook_outbox)" as Outbox
+boundary "n8n webhook\n(/webhook/ficct-invoice)" as N8N
+
+Actor -> Boundary : confirmSale(saleId)
+Boundary -> Sales : confirmSale(saleId)
+Sales -> Order : cargar Sale por id
+
+alt Sale en estado pending
+  Sales -> Order : transicion pending -> confirmed
+  Sales -> Order : crear Order code ORD-YYYYMMDD-####
+  Sales -> Sales : construir payload\ncustomer{id, name, email}
+  Sales -> DB : persistir Sale(confirmed) + Order
+  DB --> Sales : OK
+  Sales -> Outbox : enqueue fila (estado pending)
+  Outbox -> DB : INSERT webhook_outbox
+  DB --> Outbox : OK
+  Sales --> Boundary : confirmSale OK
+  Boundary --> Actor : pedido confirmado (Order code)
+else Sale no esta en pending
+  Sales --> Boundary : error transicion invalida
+  Boundary --> Actor : rechazo (estado invalido)
+end
+
+== Despacho asincrono (background, interval) ==
+
+loop por cada intervalo
+  Dispatcher -> Outbox : leer filas pendientes
+  Outbox -> DB : SELECT pendientes
+  DB --> Outbox : filas pendientes
+  Outbox --> Dispatcher : lista de pendientes
+
+  loop por cada fila pendiente
+    Dispatcher -> Dispatcher : firmar raw body HMAC-SHA256\n(X-FICCT-Signature: sha256=<hex>)
+    Dispatcher -> N8N : POST WEBHOOK_INVOICE_URL (body firmado)
+    alt entrega aceptada (2xx)
+      N8N --> Dispatcher : 2xx aceptado
+      Dispatcher -> Outbox : marcar entregada
+      Outbox -> DB : UPDATE estado entregada
+    else fallo de entrega
+      N8N --> Dispatcher : error / sin 2xx
+      Dispatcher -> Outbox : incrementar intento + reprogramar
+      Outbox -> DB : UPDATE intento / proximo reintento
+    end
+  end
+end
+@enduml

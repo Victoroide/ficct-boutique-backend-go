@@ -1,0 +1,63 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+|Cliente (movil)|
+start
+:Abre CameraSearchScreen;
+:Toma o elige foto de prenda\n(expo-image-picker);
+note right
+  Administrador puede usar el
+  mismo flujo de forma opcional
+end note
+
+|React Native ai.service|
+:POST /api/v1/ai/similarity/search/\n(multipart image, JWT RS256);
+
+|MS2 Django (similarity)|
+if (Ã‚Â¿JWT valido?\n(IsAuthenticated)) then (no)
+  :Responde 401 no autorizado;
+  |Cliente (movil)|
+  :Muestra aviso de sesion;
+  stop
+else (si)
+  |MS2 Django (embedding_service)|
+  :encode_image(imagen);
+  :Calcula pHash (64 dims)\n+ histograma HSV (48 dims);
+  :Forma vector 112-dim\nL2-normalizado;
+  note right
+    Baseline de CV clasico
+    (imagehash, Pillow, numpy):
+    NO es red neuronal / deep learning
+  end note
+
+  |AWS DynamoDB|
+  :Lee ficct_product_embeddings\n(embeddings del catalogo);
+
+  |MS2 Django (similarity)|
+  :Calcula similitud coseno\nconsulta vs cada producto;
+  :Ordena por score\ny arma matches rankeados;
+
+  if (Ã‚Â¿Hay coincidencias?\n(catalogo sincronizado)) then (no)
+    :Devuelve lista vacia\n(0 matches);
+    |Cliente (movil)|
+    :Muestra "sin resultados similares";
+    stop
+  else (si)
+    :Devuelve matches + scores;
+    |Cliente (movil)|
+    :Muestra prendas similares\nrankeadas por score;
+    stop
+  endif
+endif
+@enduml

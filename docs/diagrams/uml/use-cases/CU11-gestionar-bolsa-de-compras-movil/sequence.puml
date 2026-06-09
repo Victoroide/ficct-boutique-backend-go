@@ -1,0 +1,84 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+autonumber "<b>"
+
+actor "Cliente" as Cliente
+boundary "RN Cart screen\n(Cart, React Native)" as Cart
+control "Cart context\n(bolsa local)" as Bag
+boundary "GraphQL Endpoint\n(/graphql, schema.graphqls)" as Boundary
+control "SalesService\n(sales_service.go)" as Sales
+entity "ProductVariant / Sale / Order\n(catalog.go, orders.go)" as Sale
+database "NeonDB\n(PostgreSQL)" as DB
+
+== Gestion de la bolsa local (sin servidor) ==
+
+Cliente -> Cart : agregar variante a la bolsa
+Cart -> Bag : add item {variantId, quantity}
+Bag --> Cart : bolsa actualizada
+
+loop edicion de la bolsa (local, en el dispositivo)
+  Cliente -> Cart : actualizar cantidad / quitar item
+  Cart -> Bag : updateQty / removeItem
+  Bag -> Bag : recalcula subtotal,\nIVA 13% y total
+  Bag --> Cart : totales recalculados
+end
+
+== Confirmacion del pedido ==
+
+Cliente -> Cart : presionar "Confirmar pedido"
+
+alt bolsa vacia
+  Cart --> Cliente : bolsa vacia (no se confirma)
+else bolsa con items
+  Cart -> Bag : leer items {variantId, quantity}
+  Bag --> Cart : items de la bolsa
+  Cart -> Boundary : createSale(items{variantId, quantity})
+  Boundary -> Sales : createSale(input)
+  Sales -> Sales : valida sesion y rol\n(JWT: customer)
+
+  loop por cada item
+    Sales -> Sale : consultar stock de variante
+    Sale -> DB : SELECT stock ProductVariant
+    DB --> Sale : stock disponible
+    Sale --> Sales : stock de la variante
+  end
+
+  alt stock insuficiente
+    Sales --> Boundary : error "stock insuficiente"
+    Boundary --> Cart : error de validacion
+    Cart --> Cliente : muestra error\n(la bolsa local se conserva)
+  else stock suficiente
+    Sales -> Sale : crear Sale(pending) + SaleItems
+    Sale -> DB : INSERT Sale (pending) + SaleItems
+    DB --> Sale : Sale persistida (pending)
+    Sale --> Sales : Sale creada (pending)
+    Sales --> Boundary : Sale (estado pending)
+    Boundary --> Cart : venta pendiente
+
+    Cart -> Boundary : confirmSale(saleId)
+    Boundary -> Sales : confirmSale(saleId)
+    Sales -> Sale : transicion pending -> confirmed
+    Sales -> Sale : crear Order code ORD-YYYYMMDD-####
+    Sales -> Sales : construir payload\ncustomer{id, name, email}
+    Sales -> DB : persistir Sale(confirmed) + Order
+    Sales -> DB : INSERT webhook_outbox\n(emision de factura - CU07)
+    DB --> Sales : OK
+    Sales --> Boundary : confirmSale OK (Order code)
+    Boundary --> Cart : pedido confirmado
+    Cart -> Bag : vaciar bolsa local
+    Cart --> Cliente : pedido confirmado (Order code)
+  end
+end
+@enduml

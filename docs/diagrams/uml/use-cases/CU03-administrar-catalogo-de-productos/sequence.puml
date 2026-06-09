@@ -1,0 +1,69 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+autonumber "<b>"
+
+actor "Administrador\n(rol admin)" as Admin
+actor "Personal Logistico\n(rol staff, lectura)" as Staff
+boundary "Angular Admin\n(products / Apollo)" as Boundary
+control "Catalog resolvers\n(mutations.go)" as Resolvers
+control "CatalogService\n(catalog_service.go)" as Service
+entity "Product / ProductVariant\n(catalog.go)" as Entity
+database "NeonDB\n(PostgreSQL)" as DB
+control "Subsistema Documental\n(MS3 documentos)" as MS3
+
+== Lectura del catalogo (Personal Logistico / Administrador) ==
+Staff -> Boundary : Abrir listado de productos
+Boundary -> Resolvers : query products (POST /graphql)
+Resolvers -> Resolvers : requireAuth\n(admin / staff / customer)
+Resolvers -> Entity : Leer Product / ProductVariant
+Entity -> DB : SELECT products, product_variants
+DB --> Entity : filas de catalogo
+Entity --> Resolvers : Product / Variant
+Resolvers --> Boundary : lista de productos
+Boundary --> Staff : Mostrar catalogo (solo lectura)
+
+== Mantenimiento del catalogo (Administrador) ==
+Admin -> Boundary : Crear / actualizar / activar / desactivar producto
+Boundary -> Resolvers : mutation createProduct / updateProduct /\ncreateVariant / activateProduct / deactivateProduct
+
+alt rol no admin (requireAdmin falla)
+  Resolvers --> Boundary : error no autorizado
+  Boundary --> Admin : Mostrar error de permisos
+else rol admin autorizado
+  opt reemplazo de imagen
+    Boundary -> Resolvers : mutation replaceProductImage(ID, newImageDocumentID)
+    Resolvers -> MS3 : Asociar document id (imagen en S3 privado)
+    MS3 --> Resolvers : document id confirmado
+  end
+
+  Resolvers -> Service : CreateProduct / CreateVariant (input validado)
+  Service -> Entity : Construir / modificar Product / Variant
+  Entity -> DB : INSERT / UPDATE products, product_variants
+
+  alt escritura exitosa
+    DB --> Entity : ok (filas afectadas)
+    Entity --> Service : Product / Variant persistido
+    Service --> Resolvers : Product / Variant
+    Resolvers --> Boundary : Product / Variant actualizado
+    Boundary --> Admin : Refrescar listado de catalogo
+  else error de persistencia
+    DB --> Entity : error
+    Entity --> Service : error
+    Service --> Resolvers : error
+    Resolvers --> Boundary : error de operacion
+    Boundary --> Admin : Mostrar error al usuario
+  end
+end
+@enduml

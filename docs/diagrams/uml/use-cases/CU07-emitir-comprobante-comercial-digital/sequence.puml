@@ -1,0 +1,76 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+autonumber "<b>"
+
+actor "Cliente /\nPersonal Logistico" as Cliente
+boundary "GraphQL endpoint\n(/graphql)" as GQL
+control "SalesService\n(sales_service.go)" as Sales
+entity "Order / WebhookOutbox\n(orders.go / migracion 0001)" as Outbox
+database "NeonDB\n(PostgreSQL)" as Neon
+control "WebhookDispatcher\n(dispatcher.go)" as Dispatcher
+boundary "n8n webhook\n(/webhook/ficct-invoice)" as N8N
+control "Gotenberg\n(chromium/convert/html)" as Gotenberg
+control "Subsistema Documental\nMS3 (document.service.ts)" as MS3
+entity "S3 + hash_ledger\n(ficct-boutique-documents)" as Doc
+control "AWS SES\n(SendRawEmail SigV4)" as SES
+
+Cliente -> GQL : confirmSale(orderId)
+GQL -> Sales : confirmSale()
+Sales -> Sales : Order pending -> confirmed\n(ORD-YYYYMMDD-####)
+Sales -> Sales : build payload customer{id,name,email}
+Sales -> Outbox : enqueue webhook_outbox
+Outbox -> Neon : INSERT fila pendiente
+Neon --> Outbox : ok
+Sales --> GQL : Order confirmed
+GQL --> Cliente : confirmacion de venta
+
+Dispatcher -> Outbox : leer fila pendiente
+Dispatcher -> Dispatcher : firmar raw body\nHMAC-SHA256
+Dispatcher -> N8N : POST /webhook/ficct-invoice\nX-FICCT-Signature: sha256=<hex>
+
+N8N -> N8N : Validate HMAC and Payload\n(crypto.timingSafeEqual)
+
+alt HMAC invalido
+  N8N --> Dispatcher : 200/4xx rechazo sin efectos
+  Dispatcher -> Outbox : marcar fallo / reintento
+else HMAC valido
+  N8N -> N8N : build invoice HTML (Code)
+  N8N -> Gotenberg : POST /forms/chromium/convert/html
+  Gotenberg --> N8N : PDF bytes
+  N8N -> N8N : compute PDF SHA-256 (Code)
+  N8N -> GQL : login cuenta servicio\n(FICCT_N8N_SERVICE_*)
+  GQL --> N8N : JWT RS256
+
+  N8N -> MS3 : POST /documents/upload-request
+  MS3 --> N8N : URL presignada PUT
+  N8N -> Doc : PUT PDF (S3 presigned)
+  Doc --> N8N : 200 OK
+  N8N -> MS3 : POST /documents/:id/confirm(sha256)
+  MS3 -> Doc : anexar hash_ledger\nchain_hash = SHA256(prev||'|'||sha256)
+  Doc --> MS3 : ok
+  MS3 --> N8N : documento confirmado
+
+  N8N -> MS3 : GET /documents/:id/verify
+  MS3 -> Doc : recomputar cadena
+  Doc --> MS3 : storedSha / currentSha
+  MS3 --> N8N : {intact, chainIntact}
+
+  opt intact y chainIntact
+    N8N -> N8N : build MIME (Code)
+    N8N -> SES : SendRawEmail desde dev@ficct.com
+    SES --> N8N : enviado al correo del cliente
+  end
+end
+@enduml

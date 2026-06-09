@@ -1,0 +1,84 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+|Go SalesService|
+start
+:confirmSale\n(sales_service.go);
+:Order pending -> confirmed\ncodigo ORD-YYYYMMDD-####;
+:Construir payload\ncustomer{id,name,email};
+
+|NeonDB|
+:INSERT webhook_outbox\n(migracion 0001);
+
+|Go WebhookDispatcher|
+:Leer fila pendiente\nde webhook_outbox;
+:Firmar cuerpo crudo\nHMAC-SHA256;
+:Header X-FICCT-Signature: sha256=<hex>;
+:POST n8n /webhook/ficct-invoice;
+
+|n8n|
+:Validate HMAC and Payload\n(crypto.timingSafeEqual\nsobre raw body);
+if (HMAC valido?) then (no)
+  :Rechazar peticion\nsin efectos secundarios;
+  |Go WebhookDispatcher|
+  :Reintentar / marcar fallo\nen webhook_outbox;
+  stop
+else (si)
+  |n8n|
+  :Construir HTML de la\nfactura (Code);
+  :POST Gotenberg interno\n/forms/chromium/convert/html;
+
+  |Gotenberg|
+  :Renderizar HTML -> PDF bytes;
+
+  |n8n|
+  :Calcular SHA-256 del PDF\n(Code, crypto);
+  :Login en Go (cuenta servicio)\nFICCT_N8N_SERVICE_*;
+  :POST MS3 upload-request;
+
+  |MS3 Documentos|
+  :Generar URL presignada PUT;
+
+  |n8n|
+  :PUT del PDF a S3\nvia URL presignada;
+
+  |Subsistema Documental|
+  :S3 ficct-boutique-documents\nprivado + SSE-AES256;
+
+  |n8n|
+  :POST MS3 confirm(sha256);
+
+  |MS3 Documentos|
+  :Confirmar documento\ny anexar al hash_ledger\nchain_hash = SHA256(prev||'|'||sha256);
+
+  |n8n|
+  :GET MS3 verify hash ledger;
+
+  |MS3 Documentos|
+  :Verificar cadena\n(intact, chainIntact);
+
+  |n8n|
+  if (intact y chainIntact?) then (no)
+    :Registrar verificacion fallida;
+    stop
+  else (si)
+    :Construir MIME (Code);
+    :AWS SES SendRawEmail\n(SigV4) desde dev@ficct.com;
+  endif
+
+  |AWS SES|
+  :Entregar comprobante al\ncorreo del cliente;
+  stop
+endif
+@enduml

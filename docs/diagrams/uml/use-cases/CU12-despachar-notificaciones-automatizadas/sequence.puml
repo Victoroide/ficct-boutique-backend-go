@@ -1,0 +1,103 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+autonumber "<b>0"
+
+actor Cliente as Cliente
+actor Administrador as Admin
+boundary "NotificationsScreen\n(notifications.service)" as RN
+boundary "GraphQL POST /graphql\n(schema.graphqls)" as GQL
+control "Push Resolver\n(graph/mutations.go)" as Resolver
+control "PushSender\n(push_sender.go)" as PushSender
+entity "PushToken\n(push_tokens.go)" as PushToken
+database "NeonDB\n(push_tokens)" as Neon
+control "ai-analytics\n(MS2 clustering)" as AI
+database "DynamoDB\n(ficct_customer_segments)" as Dynamo
+boundary "Expo Push API" as Expo
+
+== Registro de token (Cliente) ==
+Cliente -> RN : requestPermission()
+activate RN
+alt Permiso concedido y dispositivo/EAS
+  RN -> RN : getExpoPushTokenAsync()
+  RN -> GQL : registerPushToken(token)
+  activate GQL
+  GQL -> Resolver : registerPushToken(token)
+  activate Resolver
+  Resolver -> PushToken : upsert(userId, token)
+  activate PushToken
+  PushToken -> Neon : INSERT/UPDATE push_tokens\n(is_active = true)
+  Neon --> PushToken : ok
+  PushToken --> Resolver : PushToken
+  deactivate PushToken
+  Resolver --> GQL : ok
+  deactivate Resolver
+  GQL --> RN : ok
+  deactivate GQL
+else Export web (sin dispositivo/EAS)
+  RN --> Cliente : No se puede generar token real\n(se requiere dispositivo / EAS)
+end
+deactivate RN
+
+== Segmentacion y despacho (Administrador) ==
+Admin -> AI : Selecciona segmento de clientes
+activate AI
+AI -> Dynamo : leer userIds del segmento
+Dynamo --> AI : userIds
+AI --> Admin : userIds del segmento
+deactivate AI
+
+Admin -> GQL : sendPushCampaign(input{title, body, userIds})
+activate GQL
+GQL -> Resolver : sendPushCampaign(input)
+activate Resolver
+Resolver -> PushToken : tokens activos de userIds
+activate PushToken
+PushToken -> Neon : SELECT push_tokens\nWHERE user_id IN (userIds) AND is_active
+Neon --> PushToken : tokens
+PushToken --> Resolver : tokens
+deactivate PushToken
+Resolver -> PushSender : send(messages)
+activate PushSender
+
+loop por cada chunk
+  PushSender -> Expo : POST Expo Push API (chunk)
+  activate Expo
+  Expo --> PushSender : tickets / receipts
+  deactivate Expo
+  alt DeviceNotRegistered
+    PushSender -> PushToken : desactivar token
+    activate PushToken
+    PushToken -> Neon : UPDATE push_tokens\nSET is_active = false
+    Neon --> PushToken : ok
+    PushToken --> PushSender : deactivated++
+    deactivate PushToken
+  else entrega ok / fallo
+    PushSender -> PushSender : contabiliza sent / failed
+  end
+end
+
+PushSender --> Resolver : SendPushResult{sent, failed, deactivated, errors}
+deactivate PushSender
+Resolver --> GQL : SendPushResult
+deactivate Resolver
+GQL --> Admin : SendPushResult{sent, failed, deactivated, errors}
+deactivate GQL
+
+note over Expo, Cliente
+  Honesto: la entrega on-device requiere un
+  Expo push token real (dispositivo / EAS).
+  El export web no puede generarlo.
+end note
+@enduml

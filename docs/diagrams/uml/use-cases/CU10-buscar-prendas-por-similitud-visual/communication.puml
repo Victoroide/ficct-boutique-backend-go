@@ -1,0 +1,34 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+left to right direction
+
+actor "Cliente (movil)\n[Administrador opcional]" as Cliente
+boundary "CameraSearchScreen + ai.service\n(React Native)" as Boundary
+control "similarity views/service\n(MS2 Django)" as Sim
+control "embedding_service\n(encode_image)" as Embed
+entity "ficct_product_embeddings\n(112-dim)" as Emb
+database "AWS DynamoDB" as Dynamo
+
+Cliente --> Boundary : 1: elige/toma foto (expo-image-picker)
+Boundary --> Sim : 2: POST /ai/similarity/search/ (multipart, JWT)
+Sim --> Embed : 3: encode_image()\n[pHash 64 + HSV 48 = 112-dim]
+Embed --> Sim : 4: vector consulta
+Sim --> Emb : 5: leer embeddings de catalogo
+Emb --> Dynamo : 6: Scan ficct_product_embeddings
+Dynamo --> Emb : 7: embeddings almacenados
+Sim --> Sim : 8: similitud coseno y ranking
+Sim --> Boundary : 9: matches + scores\n[alt: 0 matches / 401]
+Boundary --> Cliente : 10: prendas similares / sin resultados
+@enduml

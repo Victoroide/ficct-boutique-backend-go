@@ -1,0 +1,36 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+left to right direction
+
+actor "Personal Logistico\n(rol staff)" as Staff
+actor "Administrador\n(rol admin)" as Admin
+boundary "Angular Admin\n(inventory / Apollo)" as Boundary
+control "Inventory resolvers\n(mutations.go / resolvers)" as Resolvers
+entity "InventoryEntry\n(inventory.go - InventoryRepo)" as Repo
+database "NeonDB\n(PostgreSQL)" as DB
+
+Staff --> Boundary : 1: query inventoryEntries (filtrar sucursal / bajo stock)
+Admin --> Boundary : 1b: setInventoryStock / adjustInventoryStock /\nupdateInventoryReorderLevel / upsertInventory
+Boundary --> Resolvers : 2: mutation / query (POST /graphql)
+Resolvers --> Resolvers : 3: requireAuth (rol admin / staff en JWT)
+Resolvers --> Repo : 4: SearchInventory / SetStock / AdjustStock /\nSetReorderLevel / Upsert
+Repo --> DB : 5: SELECT / INSERT ON CONFLICT / UPDATE\ninventory (SC-01, SC-02)
+DB --> Repo : 6: filas (quantity, reorder_level, updated_at)
+Repo --> Resolvers : 7: InventoryEntry / InventoryPage
+Resolvers --> Resolvers : 8: evaluar bajo stock (quantity <= reorder_level)
+Resolvers --> Boundary : 9: entradas + alertas de reposicion
+Boundary --> Staff : 10: mostrar stock por sucursal
+Boundary --> Admin : 10b: refrescar tablero de inventario
+@enduml

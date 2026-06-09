@@ -1,0 +1,71 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+|Cliente / Personal Logistico|
+start
+:Solicitar confirmacion del pedido\n(mutation confirmSale);
+
+|Go SalesService|
+note right
+  SalesService.confirmSale
+  (internal/service/sales_service.go)
+end note
+:Cargar Sale existente;
+if (Sale en estado pending?) then (si)
+  :Transicion de estado\nSale pending -> confirmed;
+  :Generar Order con code\nORD-YYYYMMDD-####;
+  :Construir payload\ncustomer{id, name, email};
+
+  |NeonDB|
+  :Persistir Sale(confirmed) + Order;
+  :INSERT fila en webhook_outbox\n(estado pending);
+
+  |Go SalesService|
+  :Retornar confirmSale OK\nal cliente;
+else (no)
+  |Go SalesService|
+  :Rechazar transicion\n(estado invalido);
+  |Cliente / Personal Logistico|
+  :Recibir error de estado;
+  stop
+endif
+
+|Go WebhookDispatcher|
+note right
+  WebhookDispatcher (background, interval)
+  internal/webhook/dispatcher.go
+end note
+:Despertar por intervalo;
+
+|NeonDB|
+:Leer filas pendientes\nde webhook_outbox;
+
+|Go WebhookDispatcher|
+repeat
+  :Tomar fila de outbox;
+  :Firmar raw body HMAC-SHA256\nheader X-FICCT-Signature: sha256=<hex>;
+  :POST a WEBHOOK_INVOICE_URL\n(n8n /webhook/ficct-invoice);
+  if (Entrega aceptada (2xx)?) then (si)
+    |NeonDB|
+    :Marcar fila outbox como entregada;
+    |Go WebhookDispatcher|
+  else (no)
+    |NeonDB|
+    :Incrementar intento\ny reprogramar reintento;
+    |Go WebhookDispatcher|
+  endif
+repeat while (Quedan filas pendientes?) is (si)
+->no;
+stop
+@enduml

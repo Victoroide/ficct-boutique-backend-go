@@ -1,0 +1,84 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+skinparam linetype ortho
+
+top to bottom direction
+
+rectangle "Angular Admin / React Native\n<<clientes>>" as Clients
+
+package "Go Core API (MS1) -- Railway" {
+
+  component "GraphQL Boundary\n<<boundary>>\nPOST /graphql\n(resolvers + guards RBAC por rol JWT)" as GQL
+
+  component "AuthService\n<<service>>\nLogin: IsActive,\nbcrypt, JWT RS256 (rol)" as Auth
+  component "CatalogService\n<<service>>\ncreateProduct/updateProduct/\ncreateVariant/replaceProductImage" as Catalog
+  component "InventoryService\n<<service>>\nsetInventoryStock/adjust/\nupdateReorderLevel/upsert" as Inventory
+  component "SalesService\n<<service>>\ncreateSale, confirmSale\n(payload customer{id,name,email})" as Sales
+  component "WebhookDispatcher\n<<service>>\nfirma HMAC-SHA256,\nheader X-FICCT-Signature\nPOST WEBHOOK_INVOICE_URL" as Dispatcher
+  component "PushSender\n<<service>>\nExpo Push API, chunking,\nDeviceNotRegistered -> desactiva" as Push
+
+  component "UserRepository\n<<repository>>" as UserRepo
+  component "CatalogRepository\n<<repository>>\nProduct/ProductVariant" as CatRepo
+  component "InventoryRepository\n<<repository>>\nInventoryEntry" as InvRepo
+  component "OrderRepository\n<<repository>>\nSale/Order (ORD-YYYYMMDD-####)" as OrderRepo
+  component "PushTokenRepository\n<<repository>>" as PushRepo
+  component "WebhookOutboxRepository\n<<repository>>\nwebhook_outbox" as OutboxRepo
+}
+
+database "NeonDB\n<<PostgreSQL>>" as Neon
+rectangle "Expo Push API\n<<externo>>" as Expo
+
+package "Seam de facturacion (Subsistema Documental)" {
+  rectangle "n8n\n<<automatizacion>>\nValidate HMAC -> HTML ->\nGotenberg -> MS3 -> SES" as N8n
+  rectangle "Gotenberg\n<<servicio>>\nHTML -> PDF" as Goten
+  rectangle "MS3 Documentos\n<<Express>>\nupload-request/confirm/verify\n+ hash_ledger" as MS3
+  rectangle "AWS SES\n<<correo>>\ndev@ficct.com" as SES
+}
+
+Clients --> GQL : "GraphQL (HTTPS / JWT)"
+
+GQL --> Auth
+GQL --> Catalog
+GQL --> Inventory
+GQL --> Sales
+GQL --> Push
+
+Auth --> UserRepo
+Catalog --> CatRepo
+Inventory --> InvRepo
+Sales --> OrderRepo
+Sales --> Dispatcher : "confirmSale enqueue"
+Push --> PushRepo
+Dispatcher --> OutboxRepo
+
+UserRepo --> Neon
+CatRepo --> Neon
+InvRepo --> Neon
+OrderRepo --> Neon
+PushRepo --> Neon
+OutboxRepo --> Neon
+
+Push --> Expo : "Expo Push API (HTTPS)"
+
+Dispatcher --> N8n : "POST /webhook/ficct-invoice\nwebhook firmado HMAC-SHA256"
+N8n --> Goten : "POST convert/html (interno)"
+N8n --> MS3 : "upload-request/confirm/verify\n(HTTPS / JWT)"
+N8n --> SES : "SendRawEmail (SigV4)"
+
+note bottom of N8n
+  HMAC invalido = rechazo,
+  sin efectos secundarios
+end note
+
+@enduml

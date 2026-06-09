@@ -1,0 +1,51 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+left to right direction
+
+actor Cliente as Cliente
+actor Administrador as Admin
+boundary "NotificationsScreen\n(notifications.service)" as RN
+boundary "GraphQL /graphql\n(schema.graphqls)" as GQL
+control "Push Resolver\n(graph/mutations.go)" as Resolver
+control "PushSender\n(push_sender.go)" as PushSender
+entity "PushToken\n(push_tokens.go)" as PushToken
+database "NeonDB\n(push_tokens)" as Neon
+control "ai-analytics\n(MS2 clustering)" as AI
+database "DynamoDB\n(ficct_customer_segments)" as Dynamo
+boundary "Expo Push API" as Expo
+
+' Registro de token
+Cliente --> RN : 1: requestPermission() / getExpoPushTokenAsync()
+RN --> GQL : 2: registerPushToken(token)
+GQL --> Resolver : 3: registerPushToken(token)
+Resolver --> PushToken : 4: upsert(userId, token)
+PushToken --> Neon : 5: INSERT push_tokens (is_active=true)
+
+' Segmentacion
+Admin --> AI : 6: selecciona segmento
+AI --> Dynamo : 7: leer userIds (ficct_customer_segments)
+
+' Despacho de campania
+Admin --> GQL : 8: sendPushCampaign(input{title,body,userIds})
+GQL --> Resolver : 9: sendPushCampaign(input)
+Resolver --> PushToken : 10: tokens activos de userIds
+PushToken --> Neon : 11: SELECT push_tokens WHERE is_active
+Resolver --> PushSender : 12: send(messages)
+PushSender --> Expo : 13: POST Expo Push API (chunking)
+PushSender --> PushToken : 14: desactivar (DeviceNotRegistered)
+PushToken --> Neon : 15: UPDATE is_active=false
+PushSender --> Resolver : 16: SendPushResult{sent,failed,deactivated,errors}
+Resolver --> Admin : 17: SendPushResult
+@enduml

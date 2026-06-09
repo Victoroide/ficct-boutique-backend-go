@@ -1,0 +1,55 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+|Administrador|
+start
+:Abrir vista ai-analytics\n(segmentacion de clientes);
+:Solicitar ejecutar clustering;
+
+|Angular Admin|
+:POST /api/v1/clustering/run/\n(con JWT RS256, rol admin/staff);
+
+|MS2 Django AI|
+if (JWT valido y rol admin/staff?) then (no)
+  :Responder 401/403\n(IsAdminOrStaff);
+  |Administrador|
+  :Ver error de autorizacion;
+  stop
+else (si)
+  :clustering_service.run;
+  :Construir features RFM\n(Recency, Frequency, Monetary)\npor cliente;
+  :Ejecutar KMeans\n(scikit-learn) sobre RFM;
+  :Asignar etiqueta de segmento\na cada cliente;
+endif
+
+|DynamoDB|
+:Persistir ficct_cluster_runs\n(metadatos de la corrida);
+:Persistir ficct_customer_segments\n(cliente -> segmento);
+
+|MS2 Django AI|
+:Responder resultado de la corrida\n(segmentos + asignaciones);
+
+|Angular Admin|
+:GET /api/v1/clustering/segments/;
+
+|DynamoDB|
+:Leer ficct_customer_segments;
+
+|Angular Admin|
+:Render tabla de segmentos\ny scatter RFM;
+
+|Administrador|
+:Revisar segmentos\n(habitos de compra);
+stop
+@enduml

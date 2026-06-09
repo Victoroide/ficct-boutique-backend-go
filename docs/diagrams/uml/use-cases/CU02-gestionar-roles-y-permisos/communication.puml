@@ -1,0 +1,46 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+left to right direction
+
+actor Administrador as Admin
+boundary "Angular Admin\n(login.component + AuthService)" as Boundary
+control "Go AuthService\n(auth_service.go)" as Auth
+entity "User\n(users.go)" as User
+database "NeonDB\n(PostgreSQL)" as DB
+control "MS3 requireRoles\n(document.controller.ts)" as MS3
+control "MS2 IsAdminOrStaff\n(Django AI)" as MS2
+
+Admin --> Boundary : 1: login(usuario, password)
+Boundary --> Auth : 2: login (mutation Apollo)
+Auth --> User : 3: findByEmail
+User --> DB : 4: SELECT user
+DB --> User : 5: usuario (rol de seed/creacion)
+Auth --> Auth : 6: VerifyPassword + emite JWT con claim role
+Auth --> Boundary : 7: JWT RS256 (role: admin/staff/customer)
+
+Admin --> Boundary : 8: solicita operacion protegida
+Boundary --> Auth : 9: peticion Go Core con JWT
+Auth --> Auth : 10: resolver guard valida claim role (403 si no autorizado)
+Auth --> DB : 11: ejecuta operacion autorizada
+
+Boundary --> MS3 : 12: peticion MS3 con JWT
+MS3 --> MS3 : 13: requireRoles valida role + AuditEntry (403 si no permitido)
+
+Boundary --> MS2 : 14: peticion MS2 con JWT
+MS2 --> MS2 : 15: IsAuthenticated + IsAdminOrStaff (403 si no admin/staff)
+
+Boundary --> Admin : 16: resultado autorizado o forbidden
+
+@enduml

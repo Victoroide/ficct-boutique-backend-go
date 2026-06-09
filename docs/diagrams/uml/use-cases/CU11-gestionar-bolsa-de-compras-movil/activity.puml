@@ -1,0 +1,98 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+|Cliente|
+start
+:Navega el catalogo\n(CatalogScreen / ProductDetail);
+:Agrega variante a la bolsa\n(add al Cart local);
+
+|RN Cart\n(bolsa local)|
+:Guarda item en la bolsa\n(estado en memoria del dispositivo);
+note right
+  La bolsa es local (React Native).
+  No persiste en el servidor hasta
+  que el Cliente confirma el pedido.
+end note
+
+repeat
+  |Cliente|
+  :Revisa la bolsa;
+  if (Ã‚Â¿Accion sobre la bolsa?) then (actualizar / quitar)
+    |RN Cart\n(bolsa local)|
+    :Actualiza cantidad o quita item;
+    :Recalcula subtotal,\nIVA 13% y total;
+  else (seguir comprando)
+    |Cliente|
+    :Vuelve al catalogo;
+  endif
+repeat while (Ã‚Â¿Continuar editando la bolsa?) is (si) not (Confirmar pedido)
+
+|Cliente|
+if (Ã‚Â¿Bolsa vacia?) then (si)
+  :Muestra bolsa vacia\n(no se puede confirmar);
+  stop
+else (no)
+  :Presiona "Confirmar pedido";
+endif
+
+|RN Cart\n(bolsa local)|
+:Arma items {variantId, quantity}\ndesde la bolsa local;
+
+|Boundary GraphQL\n(/graphql)|
+:Recibe mutation createSale;
+
+|Go SalesService\n(sales_service.go)|
+:Valida sesion y rol\n(JWT: customer);
+:Verifica stock por variante;
+
+|NeonDB\n(PostgreSQL)|
+:Lee ProductVariant.stock;
+
+|Go SalesService\n(sales_service.go)|
+if (Ã‚Â¿Stock suficiente\npara todos los items?) then (no)
+  |Boundary GraphQL\n(/graphql)|
+  :Responde error\n"stock insuficiente";
+  |Cliente|
+  :Muestra error\n(la bolsa local se conserva);
+  stop
+else (si)
+  |Go SalesService\n(sales_service.go)|
+  :Calcula totales\ny crea Sale (estado pending) + SaleItems;
+
+  |NeonDB\n(PostgreSQL)|
+  :Inserta Sale (pending)\ny SaleItems;
+
+  |Go SalesService\n(sales_service.go)|
+  :Ejecuta confirmSale(saleId);
+  :Transicion pending -> confirmed\ny crea Order code ORD-YYYYMMDD-####;
+  :Construye payload\ncustomer{id, name, email};
+
+  |NeonDB\n(PostgreSQL)|
+  :Persiste Sale(confirmed) + Order;
+  :Inserta fila en webhook_outbox\n(despacho asincrono de factura);
+
+  |Boundary GraphQL\n(/graphql)|
+  :Responde pedido confirmado\n(Order code);
+
+  |Cliente|
+  :Vacia la bolsa local\ny muestra pedido confirmado;
+  note right
+    La emision del comprobante
+    (webhook firmado -> n8n ->
+    Gotenberg -> MS3 -> SES)
+    corresponde a CU07.
+  end note
+  stop
+endif
+@enduml

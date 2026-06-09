@@ -1,0 +1,71 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+autonumber "<b>"
+
+actor "Personal Logistico\n(rol staff)" as Staff
+actor "Administrador\n(rol admin)" as Admin
+boundary "Angular Admin\n(inventory / Apollo)" as Boundary
+control "Inventory resolvers\n(mutations.go / resolvers)" as Resolvers
+entity "InventoryEntry\n(inventory.go - InventoryRepo)" as Repo
+database "NeonDB\n(PostgreSQL)" as DB
+
+== Consulta de existencias por sucursal (Personal Logistico / Administrador) ==
+Staff -> Boundary : Abrir modulo de inventario\n(filtrar por sucursal / bajo stock)
+Boundary -> Resolvers : query inventoryEntries\n(filter, limit, offset) (POST /graphql)
+Resolvers -> Resolvers : requireAuth\n(admin / staff)
+Resolvers -> Repo : SearchInventory(filter)
+Repo -> DB : SELECT inventory por\nSC-01 / SC-02 (quantity, reorder_level)
+DB --> Repo : filas de inventario por sucursal
+Repo --> Resolvers : InventoryPage
+Resolvers -> Resolvers : Evaluar bajo stock\n(quantity <= reorder_level)
+Resolvers --> Boundary : Entradas + alertas de reposicion
+Boundary --> Staff : Mostrar stock por sucursal\n(resaltar bajo punto de reorden)
+
+== Ajuste de existencias multisucursal (Personal Logistico / Administrador) ==
+Admin -> Boundary : Fijar / ajustar stock o\npunto de reorden (variant, branch)
+Boundary -> Resolvers : mutation setInventoryStock /\nadjustInventoryStock /\nupdateInventoryReorderLevel /\nupsertInventory
+
+alt rol no autorizado (requireAdmin/Staff falla)
+  Resolvers --> Boundary : error no autorizado
+  Boundary --> Admin : Mostrar error de permisos
+else rol autorizado
+  alt setInventoryStock (cantidad absoluta)
+    Resolvers -> Repo : SetStock(variantId, branchId, quantity)
+    Repo -> DB : INSERT ... ON CONFLICT\nUPDATE quantity
+  else adjustInventoryStock (delta firmado)
+    Resolvers -> Repo : AdjustStock(variantId, branchId, delta)
+    Repo -> DB : UPDATE quantity = quantity + delta\n(no baja de cero)
+  else updateInventoryReorderLevel (umbral)
+    Resolvers -> Repo : SetReorderLevel(variantId, branchId, level)
+    Repo -> DB : UPDATE reorder_level
+  else upsertInventory (alta / sincronizacion)
+    Resolvers -> Repo : Upsert(variantId, branchId, quantity, reorderLevel)
+    Repo -> DB : INSERT ... ON CONFLICT UPDATE\nquantity + reorder_level
+  end
+
+  alt escritura exitosa
+    DB --> Repo : fila (quantity, reorder_level, updated_at)
+    Repo --> Resolvers : InventoryEntry
+    Resolvers -> Resolvers : Reevaluar bajo stock\n(quantity <= reorder_level)
+    Resolvers --> Boundary : InventoryEntry + estado de reposicion
+    Boundary --> Admin : Refrescar tablero de inventario
+  else error de persistencia (p.ej. delta invalido)
+    DB --> Repo : error
+    Repo --> Resolvers : error
+    Resolvers --> Boundary : error de operacion
+    Boundary --> Admin : Mostrar error al usuario
+  end
+end
+@enduml

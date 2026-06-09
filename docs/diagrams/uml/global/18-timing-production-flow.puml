@@ -1,0 +1,73 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+robust "Go Core" as Go
+robust "n8n" as N8n
+robust "Gotenberg" as Got
+robust "MS3" as MS3
+robust "S3" as S3
+robust "SES" as SES
+
+@0
+Go is idle
+N8n is idle
+Got is idle
+MS3 is idle
+S3 is idle
+SES is idle
+
+@1
+Go is busy : confirmSale
+
+@2
+Go -> N8n : webhook
+N8n is busy : HMAC ok
+
+@3
+N8n -> Got : convert html
+Got is busy : PDF
+
+@4
+Got -> N8n
+N8n is busy : upload-request
+N8n -> MS3
+MS3 is busy
+
+@5
+MS3 -> N8n
+N8n -> S3 : S3 put
+S3 is busy
+
+@6
+S3 -> N8n
+N8n -> MS3 : confirm
+MS3 is busy : confirm
+
+@7
+MS3 is busy : ledger verify
+
+@8
+MS3 -> N8n
+N8n -> SES : email sent
+SES is busy
+
+@9
+SES is idle
+N8n is idle
+Got is idle
+MS3 is idle
+S3 is idle
+Go is idle
+
+@enduml

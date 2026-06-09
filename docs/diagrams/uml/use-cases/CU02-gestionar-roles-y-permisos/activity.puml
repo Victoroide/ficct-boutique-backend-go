@@ -1,0 +1,83 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+|Administrador|
+start
+:Inicia sesion en Angular Admin\n(login.component + AuthService);
+
+|Angular Admin|
+:Envia mutation login (Apollo)\nPOST /graphql;
+
+|Go AuthService\n(auth_service.go)|
+:Valida credenciales\n(IsActive + bcrypt VerifyPassword);
+if (Credenciales validas?) then (si)
+  :Emite JWT RS256\ncon claim de rol\n(admin / staff / customer);
+else (no)
+  :Rechaza login\n(usuario inactivo o credenciales malas);
+  |Administrador|
+  stop
+endif
+
+|NeonDB|
+note right
+  Roles definidos en creacion de cuenta / seed
+  (SEED_* env). No existe mutation de
+  auto-servicio para editar roles.
+end note
+
+|Administrador|
+:Solicita operacion protegida\n(catalogo / inventario / documentos / IA);
+
+|Angular Admin|
+:Adjunta JWT (Authorization Bearer)\ny envia la peticion al microservicio;
+
+partition "Autorizacion por rol (enforcement por peticion)" {
+  if (Microservicio destino?) then (Go Core)
+    |Go AuthService\n(auth_service.go)|
+    :Resolver guard lee claim de rol del JWT;
+    if (Rol autorizado para el resolver?) then (si)
+      :Ejecuta resolver protegido;
+    else (no)
+      :Devuelve forbidden / 403;
+      |Administrador|
+      stop
+    endif
+  elseif (MS3 documentos) then (MS3)
+    |MS3 Documentos\n(requireRoles)|
+    :Middleware requireRoles valida\nrol del JWT;
+    if (Rol permitido?) then (si)
+      :Ejecuta ruta protegida\ny registra AuditEntry;
+    else (no)
+      :Devuelve 403 forbidden;
+      |Administrador|
+      stop
+    endif
+  else (MS2 IA)
+    |MS2 Django AI\n(IsAdminOrStaff)|
+    :Permiso IsAuthenticated +\nIsAdminOrStaff (clustering / forecasting);
+    if (Rol admin o staff?) then (si)
+      :Ejecuta endpoint de IA;
+    else (no)
+      :Devuelve 403 forbidden;
+      |Administrador|
+      stop
+    endif
+  endif
+}
+
+|Administrador|
+:Recibe respuesta autorizada;
+stop
+
+@enduml

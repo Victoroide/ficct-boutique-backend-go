@@ -1,0 +1,36 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+left to right direction
+
+actor Administrador as admin
+boundary "Angular ai-analytics\n(ai-analytics.component)" as ui
+control "API Gateway / Vistas DRF\n(forecasting/run)" as gw
+control "forecast_service\n(Holt linear, numpy)" as svc
+entity "ficct_forecast_results" as fr
+database "DynamoDB" as ddb
+
+admin --> ui : 1: solicitarProyeccion(scope)
+ui --> gw : 2: POST /api/v1/forecasting/run/ (JWT)
+gw --> svc : 3: run(scope) [rol admin/staff]
+svc --> fr : 4: leerHistorico()
+fr --> ddb : 5: Query ficct_forecast_results
+ddb --> fr : 6: series historicas
+svc --> svc : 7: Holt linear (numpy)
+svc --> fr : 8: escribirProyeccion()
+fr --> ddb : 9: PutItem ficct_forecast_results
+svc --> gw : 10: serie proyectada (JSON)
+gw --> ui : 11: 200 OK + proyeccion
+ui --> admin : 12: renderizar grafico de demanda
+@enduml

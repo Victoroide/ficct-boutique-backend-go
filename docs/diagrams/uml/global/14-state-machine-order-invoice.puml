@@ -1,0 +1,58 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+[*] --> SalePending : createSale
+
+state "Sale: pending" as SalePending
+state "Sale: confirmed\nOrder code asignado" as SaleConfirmed
+state "Webhook encolado\n(webhook_outbox)" as WebhookEnqueued
+
+SalePending --> SaleConfirmed : confirmSale\n[stock disponible]
+SaleConfirmed --> WebhookEnqueued : WebhookDispatcher\nfirma HMAC-SHA256
+
+state "Procesamiento de factura (n8n)" as InvoiceProc {
+  state "Validar HMAC" as HmacCheck
+  state "PDF generado\n(Gotenberg)" as PdfGen
+  state "Subido a S3\n(PUT presigned)" as Uploaded
+  state "Document: pending\n(upload-request)" as DocPending
+  state "Document: confirmed (active)\n(sha256)" as DocConfirmed
+  state "Ledger verificado\n(intact, chainIntact)" as LedgerOk
+  state "Email enviado\n(SES dev@ficct.com)" as EmailSent
+
+  [*] --> HmacCheck
+  HmacCheck --> PdfGen : [HMAC valido]
+  PdfGen --> DocPending : MS3 upload-request
+  DocPending --> Uploaded : S3 PUT
+  Uploaded --> DocConfirmed : MS3 confirm(sha256)
+  DocConfirmed --> LedgerOk : MS3 verify\n[chainIntact]
+  LedgerOk --> EmailSent : SES SendRawEmail
+  EmailSent --> [*]
+}
+
+WebhookEnqueued --> InvoiceProc : POST /webhook/ficct-invoice
+WebhookEnqueued --> Rejected : [HMAC invalido]\nrechazado sin efectos
+
+state "Rechazado\n(sin side effects)" as Rejected
+Rejected --> [*]
+
+InvoiceProc --> DocActive : factura emitida
+
+state "Document: active" as DocActive
+state "Document: deleted (soft)" as DocDeleted
+
+DocActive --> DocDeleted : DELETE /:id\n(soft-delete)
+DocDeleted --> DocActive : restore
+DocActive --> [*]
+
+@enduml

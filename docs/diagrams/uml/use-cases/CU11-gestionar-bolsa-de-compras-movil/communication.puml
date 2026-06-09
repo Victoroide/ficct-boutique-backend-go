@@ -1,0 +1,44 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+left to right direction
+
+actor "Cliente" as Cliente
+boundary "RN Cart screen\n(Cart, React Native)" as Cart
+control "Cart context\n(bolsa local)" as Bag
+boundary "GraphQL Endpoint\n(/graphql)" as Boundary
+control "SalesService\n(sales_service.go)" as Sales
+entity "ProductVariant / Sale / Order\n(catalog.go, orders.go)" as Sale
+database "NeonDB\n(PostgreSQL)" as DB
+
+Cliente --> Cart : 1: add / updateQty / removeItem
+Cart --> Bag : 2: actualizar bolsa local
+Bag --> Cart : 3: recalcula IVA 13% y total
+Cliente --> Cart : 4: Confirmar pedido
+Cart --> Boundary : 5: createSale(items{variantId, quantity})
+Boundary --> Sales : 6: createSale(input)
+Sales --> Sale : 7: consultar stock de variante
+Sale --> DB : 8: SELECT stock ProductVariant
+DB --> Sale : 9: stock disponible
+Sales --> Sale : 10: crear Sale(pending) + SaleItems
+Sale --> DB : 11: INSERT Sale (pending) + SaleItems
+Cart --> Boundary : 12: confirmSale(saleId)
+Boundary --> Sales : 13: confirmSale(saleId)
+Sales --> Sale : 14: pending -> confirmed + Order ORD-YYYYMMDD-####
+Sale --> DB : 15: persistir Sale(confirmed) + Order
+Sales --> DB : 16: INSERT webhook_outbox (factura - CU07)
+Boundary --> Cart : 17: pedido confirmado (Order code)\n[alt: error stock insuficiente]
+Cart --> Bag : 18: vaciar bolsa local
+Cart --> Cliente : 19: pedido confirmado / error
+@enduml

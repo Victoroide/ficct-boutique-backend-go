@@ -1,0 +1,56 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+|Administrador|
+start
+:Abrir vista\nai-analytics (forecast);
+:Seleccionar scope y\nsolicitar proyeccion;
+
+|Angular Admin|
+:ai-analytics.component\nenvia POST /api/v1/forecasting/run/\ncon JWT (Authorization Bearer);
+
+|MS2 Django AI|
+:API Gateway recibe peticion;
+if (JWT valido y rol admin/staff?) then (si)
+  :forecast_service ejecuta\nHolt linear (double exponential\nsmoothing, numpy);
+else (no)
+  :Responder 401/403\n(IsAuthenticated / IsAdminOrStaff);
+  |Angular Admin|
+  :Mostrar error de\nautorizacion;
+  |Administrador|
+  stop
+endif
+
+|MS2 Django AI|
+:Cargar historico de ventas\npara el scope solicitado;
+
+|DynamoDB|
+:Leer ficct_forecast_results\n(corridas previas / series);
+
+|MS2 Django AI|
+:Calcular nivel y tendencia\n(Holt) y proyectar horizonte;
+
+|DynamoDB|
+:Escribir ficct_forecast_results\n(nueva proyeccion);
+
+|MS2 Django AI|
+:Responder JSON con\nserie proyectada;
+
+|Angular Admin|
+:Renderizar grafico\nde proyeccion de demanda;
+
+|Administrador|
+:Consultar la proyeccion\nen el dashboard;
+stop
+@enduml

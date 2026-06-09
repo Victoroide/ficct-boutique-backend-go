@@ -1,0 +1,83 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+skinparam linetype ortho
+
+top to bottom direction
+
+component "Angular Admin" as Ng
+component "React Native Mobile" as RN
+component "Go Core\n(GraphQL)" as Go
+component "n8n\n(ficct-invoice)" as N8N
+component "Gotenberg" as Goten
+component "MS3 Documental\n(API Gateway + Lambda)" as MS3
+component "MS2 Django AI\n(Cloud Run)" as MS2
+
+' Cloud resources as components
+component "S3\nficct-boutique-documents" as S3
+database "NeonDB\nPostgreSQL" as Neon
+database "DynamoDB\n(4 tablas)" as Dynamo
+component "AWS SES\ndev@ficct.com" as SES
+cloud "Expo Push API" as Expo
+
+' Provided interfaces (lollipops)
+interface "GraphQL\nPOST /graphql" as IGraphQL
+interface "MS3 Docs REST\n/api/v1/documents" as IDocs
+interface "Hash Ledger\nverify" as ILedger
+interface "MS2 AI REST\nsimilarity/forecast/clustering" as IAI
+interface "n8n webhook\n/webhook/ficct-invoice\n(HMAC-SHA256)" as IWebhook
+interface "Gotenberg\nhtml->PDF" as IPdf
+interface "Expo Push" as IPush
+interface "SES\nSendRawEmail (SigV4)" as ISes
+interface "S3 presigned\nPUT/GET" as IS3
+
+' Providers
+Go - IGraphQL
+MS3 - IDocs
+MS3 - ILedger
+MS2 - IAI
+N8N - IWebhook
+Goten - IPdf
+Expo - IPush
+SES - ISes
+S3 - IS3
+
+' Required (clients consume provided)
+Ng ..> IGraphQL : Apollo
+Ng ..> IDocs : HttpClient
+Ng ..> ILedger
+Ng ..> IAI
+RN ..> IGraphQL : Apollo
+RN ..> IAI : similarity (multipart)
+
+' Invoice chain
+Go ..> IWebhook : signed webhook
+N8N ..> IPdf
+N8N ..> IDocs : upload-request/confirm
+N8N ..> ILedger : verify
+N8N ..> IGraphQL : service login
+N8N ..> IS3 : PUT (presigned)
+N8N ..> ISes : enviar comprobante
+
+' MS3 storage
+MS3 ..> IS3
+MS3 --> Neon : SQL
+
+' Push
+Go ..> IPush : sendPushCampaign
+
+' Persistence
+Go --> Neon : SQL
+MS2 --> Dynamo : embeddings/forecast/segments
+
+@enduml

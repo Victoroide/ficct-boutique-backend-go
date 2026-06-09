@@ -1,0 +1,42 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+autonumber "<b>"
+
+actor "Usuario\n(Administrador /\nPersonal Logistico /\nCliente)" as Usuario
+boundary "GraphQL endpoint\n(AuthService /\nauth.context)" as Boundary
+control "AuthService.Login\n(auth_service.go)" as Control
+entity "User\n(users.go)" as Entity
+database "NeonDB\n(PostgreSQL)" as DB
+
+Usuario -> Boundary : Ingresar correo y contrasena
+Boundary -> Control : mutation login(email, password)
+Control -> Entity : Buscar usuario por correo
+Entity -> DB : SELECT users WHERE email
+DB --> Entity : fila de usuario
+Entity --> Control : User (IsActive, password_hash, role)
+
+alt usuario no encontrado o contrasena invalida
+  Control -> Control : bcrypt VerifyPassword
+  Control --> Boundary : error 401 credenciales invalidas
+  Boundary --> Usuario : Mostrar error de credenciales
+else usuario inactivo
+  Control --> Boundary : error "user is inactive"
+  Boundary --> Usuario : Mostrar cuenta inactiva (rotada / legacy)
+else autenticacion exitosa
+  Control -> Control : Emitir JWT RS256 con claim de rol
+  Control --> Boundary : token JWT + rol
+  Boundary --> Usuario : Acceso concedido segun rol
+end
+@enduml

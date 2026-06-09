@@ -1,0 +1,53 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+skinparam linetype ortho
+
+package "FICCT Boutique Profile" {
+
+  class Component <<metaclass>>
+  class "Class" as Clazz <<metaclass>>
+  class Node <<metaclass>>
+
+  class Microservice <<stereotype>>
+  class Boundary <<stereotype>>
+  class Control <<stereotype>>
+  class Entity <<stereotype>>
+  class ExternalService <<stereotype>>
+  class CloudResource <<stereotype>>
+  class Serverless <<stereotype>>
+  class HashLedger <<stereotype>>
+  class AIModel <<stereotype>>
+  class Workflow <<stereotype>>
+
+  Microservice ..|> Component : <<extend>>
+  Boundary ..|> Component : <<extend>>
+  Control ..|> Clazz : <<extend>>
+  Entity ..|> Clazz : <<extend>>
+  ExternalService ..|> Component : <<extend>>
+  CloudResource ..|> Node : <<extend>>
+  Serverless ..|> Node : <<extend>>
+  HashLedger ..|> Clazz : <<extend>>
+  AIModel ..|> Clazz : <<extend>>
+  Workflow ..|> Component : <<extend>>
+}
+
+package "Aplicacion del Profile (ejemplos)" {
+  class "MS1 Go Core" as Ej1 <<Microservice>>
+  class "AuthService" as Ej2 <<Control>>
+  class "hash_ledger" as Ej3 <<HashLedger>>
+  class "AWS SES" as Ej4 <<CloudResource>>
+  class "n8n invoice workflow" as Ej5 <<Workflow>>
+}
+
+@enduml

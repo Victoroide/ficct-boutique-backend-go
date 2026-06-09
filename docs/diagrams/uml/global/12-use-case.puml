@@ -1,0 +1,73 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+skinparam linetype ortho
+left to right direction
+
+actor "Administrador" as Admin
+actor "Personal Logistico" as Staff
+actor "Cliente" as Cliente
+actor "Subsistema Documental" as MS3
+
+rectangle "FICCT Boutique" {
+  usecase "CU01 Autenticar usuario" as CU01
+  usecase "CU02 Gestionar roles y permisos" as CU02
+  usecase "CU03 Administrar catalogo de productos" as CU03
+  usecase "CU04 Controlar inventario multisucursal" as CU04
+  usecase "CU05 Registrar transaccion de venta" as CU05
+  usecase "CU06 Orquestar estados del pedido" as CU06
+  usecase "CU07 Emitir comprobante comercial digital" as CU07
+  usecase "CU08 Consultar proyeccion de demanda" as CU08
+  usecase "CU09 Segmentar compradores por habitos" as CU09
+  usecase "CU10 Buscar prendas por similitud visual" as CU10
+  usecase "CU11 Gestionar bolsa de compras movil" as CU11
+  usecase "CU12 Despachar notificaciones automatizadas" as CU12
+}
+
+Admin --> CU01
+Staff --> CU01
+Cliente --> CU01
+
+Admin --> CU02
+
+Admin --> CU03
+Staff --> CU03
+
+Staff --> CU04
+Admin --> CU04
+
+Cliente --> CU05
+Staff --> CU05
+Admin --> CU05
+
+Cliente --> CU06
+Staff --> CU06
+
+MS3 --> CU07
+
+Admin --> CU08
+Admin --> CU09
+
+Cliente --> CU10
+Admin --> CU10
+
+Cliente --> CU11
+
+Admin --> CU12
+Cliente --> CU12
+
+CU06 ..> CU07 : <<include>>\nemitir comprobante
+CU11 ..> CU05 : <<include>>
+CU07 ..> CU12 : <<extend>>\nnotificacion (opcional)
+
+@enduml

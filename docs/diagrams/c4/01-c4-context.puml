@@ -1,0 +1,46 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+skinparam linetype ortho
+
+top to bottom direction
+
+actor "Administrador\n<<rol admin>>" as Admin
+actor "Personal Logistico\n<<rol staff>>" as Staff
+actor "Cliente\n<<rol customer>>" as Cliente
+
+rectangle "FICCT Boutique\n<<sistema>>\nPlataforma retail (catalogo,\ninventario, ventas, BI,\nfacturacion y notificaciones)" as Sistema
+
+rectangle "AWS S3\n<<sistema externo>>\nAlmacen de documentos\n(privado + SSE-AES256)" as S3
+rectangle "AWS SES\n<<sistema externo>>\nEnvio de correo\n(remitente dev@ficct.com)" as SES
+rectangle "AWS DynamoDB\n<<sistema externo>>\nEmbeddings, forecast\ny segmentos (IA)" as Dynamo
+rectangle "Expo Push API\n<<sistema externo>>\nEntrega de notificaciones\npush a dispositivos" as Expo
+rectangle "NeonDB\n<<sistema externo>>\nPostgreSQL (Go Core\ny documentos MS3)" as Neon
+
+Admin --> Sistema : "Administra catalogo, inventario,\nBI e IA (HTTPS / JWT RS256)"
+Staff --> Sistema : "Gestiona inventario y\ndocumentos (HTTPS / JWT RS256)"
+Cliente --> Sistema : "Explora catalogo, compra,\nbusqueda visual (HTTPS / JWT RS256)"
+
+Sistema --> Neon : "Lee/escribe datos\n(SQL sobre TLS)"
+Sistema --> S3 : "Sube/lee comprobantes\n(PUT presignado HTTPS)"
+Sistema --> SES : "Envia facturas al cliente\n(SendRawEmail SigV4)"
+Sistema --> Dynamo : "Persiste embeddings,\nforecast y segmentos (SDK)"
+Sistema --> Expo : "Envia campanas push\n(Expo Push API HTTPS)"
+
+note bottom of Sistema
+  Emision de comprobantes:
+  webhook firmado HMAC-SHA256
+  interno (confirmSale -> n8n)
+end note
+
+@enduml

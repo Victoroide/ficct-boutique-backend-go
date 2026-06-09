@@ -1,0 +1,75 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+skinparam linetype ortho
+
+top to bottom direction
+
+actor "Administrador\n<<rol admin>>" as Admin
+actor "Personal Logistico\n<<rol staff>>" as Staff
+actor "Cliente\n<<rol customer>>" as Cliente
+
+package "FICCT Boutique" {
+
+  package "Railway" {
+    rectangle "Angular Admin\n<<contenedor: SPA>>\nnginx estatico\n(login, dashboard BI, productos,\ninventario, documentos, IA)" as Angular
+    rectangle "Go Core API (MS1)\n<<contenedor: Go>>\nGraphQL POST /graphql\n(auth, catalogo, inventario,\nventas, push, webhook)" as GoCore
+    rectangle "n8n\n<<contenedor: automatizacion>>\nworkflow factura\n(31 nodos, self-hosted)" as N8n
+    rectangle "Gotenberg\n<<contenedor: servicio>>\nHTML -> PDF\n(chromium)" as Goten
+  }
+
+  rectangle "React Native (Expo)\n<<contenedor: app movil>>\n(catalogo, carrito, camara IA,\nsucursales GPS, push)" as RN
+
+  package "AWS" {
+    rectangle "MS3 Documentos\n<<contenedor: Express>>\nLambda + API Gateway\n(documentos, ledger, auditoria)" as MS3
+    rectangle "AWS S3\n<<contenedor: almacen>>\nficct-boutique-documents\n(privado + SSE-AES256)" as S3
+    rectangle "AWS DynamoDB\n<<contenedor: BD NoSQL>>\n4 tablas IA" as Dynamo
+    rectangle "AWS SES\n<<contenedor: correo>>\nremitente dev@ficct.com" as SES
+  }
+
+  package "GCP Cloud Run" {
+    rectangle "MS2 Django IA\n<<contenedor: Python>>\nsimilitud (pHash+HSV),\nforecast (Holt), KMeans" as MS2
+  }
+
+  rectangle "NeonDB\n<<contenedor: BD>>\nPostgreSQL\n(Go Core + MS3)" as Neon
+}
+
+rectangle "Expo Push API\n<<sistema externo>>" as Expo
+
+Admin --> Angular : "Usa (HTTPS)"
+Staff --> Angular : "Usa (HTTPS)"
+Cliente --> RN : "Usa (HTTPS)"
+
+Angular --> GoCore : "GraphQL Apollo\n(HTTPS / JWT)"
+Angular --> MS3 : "API documentos\n(HttpClient HTTPS / JWT)"
+Angular --> MS2 : "API IA forecast/clustering\n(HTTPS / JWT)"
+
+RN --> GoCore : "GraphQL auth/ventas/push\n(HTTPS / JWT)"
+RN --> MS2 : "similarity/search\n(multipart HTTPS / JWT)"
+
+GoCore --> Neon : "SQL (TLS)"
+GoCore --> N8n : "POST /webhook/ficct-invoice\nwebhook firmado HMAC-SHA256"
+GoCore --> Expo : "Expo Push API (HTTPS)"
+
+N8n --> Goten : "POST /forms/chromium/convert/html\n(HTTP interno railway.internal)"
+N8n --> GoCore : "login cuenta servicio\n(GraphQL HTTPS)"
+N8n --> MS3 : "upload-request / confirm / verify\n(HTTPS / JWT)"
+N8n --> S3 : "PUT presignado\n(HTTPS)"
+N8n --> SES : "SendRawEmail\n(SigV4 HTTPS)"
+
+MS3 --> Neon : "SQL (TLS)"
+MS3 --> S3 : "lee/escribe objetos\n(SDK HTTPS)"
+
+MS2 --> Dynamo : "embeddings/forecast/segmentos\n(SDK HTTPS)"
+
+@enduml

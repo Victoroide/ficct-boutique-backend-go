@@ -1,0 +1,79 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+skinparam linetype ortho
+
+component "MS1 Go Core\n(Railway)" as GoCore {
+
+  portin " " as GraphQLPort
+  port " " as NeonPort
+  port " " as N8nPort
+
+  rectangle "GraphQL Boundary\ncmd/server/main.go\nPOST /graphql" as GraphQL
+
+  package "Service Parts (Control)" {
+    rectangle ":AuthService\n(Login, RS256 JWT)" as AuthSvc
+    rectangle ":SalesService\n(createSale, confirmSale)" as SalesSvc
+    rectangle ":CatalogResolvers\n(productos/variantes)" as CatalogSvc
+    rectangle ":InventoryResolvers\n(stock por sucursal)" as InventorySvc
+    rectangle ":PushSender\n(Expo Push API)" as PushSvc
+  }
+
+  package "Repository Parts (Entity)" {
+    rectangle ":UserRepo" as UserRepo
+    rectangle ":Catalog\n(Product/Variant)" as CatalogRepo
+    rectangle ":InventoryRepo" as InvRepo
+    rectangle ":Orders\n(Sale/Order)" as OrdersRepo
+    rectangle ":PushTokenRepo" as PushRepo
+  }
+
+  rectangle "WebhookDispatcher\n(Outbox)\nfirma HMAC-SHA256\nX-FICCT-Signature" as Dispatcher
+  rectangle ":WebhookOutbox\n(webhook_outbox)" as Outbox
+
+  GraphQLPort -- GraphQL
+  GraphQL --> AuthSvc
+  GraphQL --> SalesSvc
+  GraphQL --> CatalogSvc
+  GraphQL --> InventorySvc
+  GraphQL --> PushSvc
+
+  AuthSvc --> UserRepo
+  CatalogSvc --> CatalogRepo
+  InventorySvc --> InvRepo
+  SalesSvc --> OrdersRepo
+  PushSvc --> PushRepo
+
+  SalesSvc --> Outbox : confirmSale\nencola
+  Outbox --> Dispatcher : entrega firmada
+
+  UserRepo -- NeonPort
+  CatalogRepo -- NeonPort
+  InvRepo -- NeonPort
+  OrdersRepo -- NeonPort
+  PushRepo -- NeonPort
+  Outbox -- NeonPort
+
+  Dispatcher -- N8nPort
+}
+
+database "NeonDB\nPostgreSQL" as Neon
+node "n8n\nPOST /webhook/ficct-invoice\n(Railway)" as N8n
+cloud "Expo Push API" as Expo
+component "Angular Apollo\nReact Native auth" as Clients
+
+Clients --> GraphQLPort : GraphQL
+NeonPort -- Neon
+N8nPort --> N8n : webhook firmado\nHMAC-SHA256
+PushSvc ..> Expo : envio push
+
+@enduml

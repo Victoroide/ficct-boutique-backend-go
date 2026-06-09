@@ -1,0 +1,80 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+|Administrador / Personal Logistico|
+start
+:Abrir modulo de productos\n(Angular Admin);
+
+if (operacion?) then (consultar catalogo)
+  |Angular Admin\n(products)|
+  :Solicitar query products\n(POST /graphql via Apollo);
+  |Go catalog resolvers\n(mutations.go / resolvers)|
+  :requireAuth\n(admin / staff / customer);
+  :Leer productos y variantes;
+  |Go CatalogRepo\n(catalog.go)|
+  :Consultar Product / ProductVariant;
+  |NeonDB (PostgreSQL)|
+  :SELECT products, product_variants;
+  |Angular Admin\n(products)|
+  :Mostrar listado de catalogo;
+  |Administrador / Personal Logistico|
+  stop
+else (crear / actualizar / activar / desactivar)
+  |Administrador / Personal Logistico|
+  :Completar formulario de producto o variante\n(SKU, nombre, categoria, precio base, moneda);
+
+  |Angular Admin\n(products)|
+  :Enviar mutation de catalogo\n(createProduct / updateProduct /\ncreateVariant / activateProduct /\ndeactivateProduct);
+
+  |Go catalog resolvers\n(mutations.go)|
+  if (rol admin? (requireAdmin)) then (no)
+    :Rechazar operacion\n(no autorizado);
+    |Angular Admin\n(products)|
+    :Mostrar error de permisos\n(solo lectura para staff);
+    |Administrador / Personal Logistico|
+    stop
+  else (si)
+    :Validar entrada y enrutar mutation;
+
+    if (incluye imagen nueva?) then (si)
+      :replaceProductImage\n(ID, newImageDocumentID);
+      |Subsistema Documental\n(MS3 documentos)|
+      :Asociar documento de imagen\n(document id en S3 privado);
+      |Go catalog resolvers\n(mutations.go)|
+    else (no)
+    endif
+
+    |Go CatalogService / CatalogRepo\n(catalog_service.go / catalog.go)|
+    :Aplicar cambio sobre\nProduct / ProductVariant;
+
+    |NeonDB (PostgreSQL)|
+    if (escritura exitosa?) then (no)
+      :Devolver error de persistencia;
+      |Angular Admin\n(products)|
+      :Mostrar error al usuario;
+      |Administrador / Personal Logistico|
+      stop
+    else (si)
+      :INSERT / UPDATE products, product_variants;
+    endif
+
+    |Go catalog resolvers\n(mutations.go)|
+    :Devolver Product / Variant actualizado;
+    |Angular Admin\n(products)|
+    :Refrescar listado de catalogo;
+    |Administrador / Personal Logistico|
+    stop
+  endif
+endif
+@enduml

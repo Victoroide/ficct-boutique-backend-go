@@ -1,0 +1,50 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+start
+
+partition "ref CU05 Registrar venta" {
+  :SalesService.createSale\nSale(pending);
+}
+
+if (stock disponible?) then ([si])
+  partition "ref CU06 Confirmar venta" {
+    :confirmSale -> Order(code)\nWebhookDispatcher firma HMAC\nencola webhook_outbox;
+  }
+
+  partition "ref CU07 Emitir comprobante" {
+    :POST n8n /webhook/ficct-invoice;
+  }
+
+  if (HMAC valido?) then ([si])
+    partition "ref CU07 (continuacion)" {
+      :Gotenberg PDF -> MS3 upload-request\nS3 PUT -> MS3 confirm(sha256)\nMS3 verify hash ledger (intact);
+    }
+
+    partition "ref CU12 Notificar" {
+      :SES SendRawEmail desde dev@ficct.com\n(opcional push si hay token de dispositivo);
+    }
+    stop
+
+  else ([no])
+    :Rechazar webhook\nsin side effects;
+    stop
+  endif
+
+else ([no])
+  :Rechazar venta\nstock insuficiente;
+  stop
+endif
+
+@enduml

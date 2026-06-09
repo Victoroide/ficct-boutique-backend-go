@@ -1,0 +1,88 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+skinparam linetype ortho
+
+top to bottom direction
+
+node "Dispositivo Expo\n(Cliente)" as Device {
+  artifact "App React Native\n(Expo)" as RNArt
+}
+
+node "Railway" as Railway {
+  node "go-core" as GoCore {
+    artifact "Go GraphQL server\n(Docker)" as GoArt
+  }
+  node "n8n" as N8nNode {
+    artifact "workflow\nficct-invoice" as N8nArt
+  }
+  node "gotenberg" as GotenNode {
+    artifact "Gotenberg\n(chromium)" as GotenArt
+  }
+  node "angular-admin" as NgNode {
+    artifact "Angular static\n(nginx/Docker)" as NgArt
+  }
+}
+
+node "AWS" as AWS {
+  node "API Gateway + Lambda" as Lambda {
+    artifact "MS3 Documental\n(Express)" as MS3Art
+  }
+  node "S3" as S3Node {
+    artifact "ficct-boutique-documents\n(privado + SSE-AES256)" as S3Art
+  }
+  node "DynamoDB" as DynamoNode {
+    artifact "ficct_product_embeddings" as T1
+    artifact "ficct_forecast_results" as T2
+    artifact "ficct_customer_segments" as T3
+    artifact "ficct_cluster_runs" as T4
+  }
+  node "SES" as SesNode {
+    artifact "sender dev@ficct.com" as SesArt
+  }
+}
+
+node "GCP Cloud Run" as GCP {
+  artifact "MS2 Django AI" as MS2Art
+}
+
+node "NeonDB" as Neon {
+  artifact "PostgreSQL\n(Go + MS3)" as NeonArt
+}
+
+' Communication paths / protocols
+RNArt ..> GoArt : HTTPS GraphQL\nPOST /graphql
+RNArt ..> MS2Art : HTTPS\nsimilarity (multipart)
+RNArt <.. GoArt : Expo Push\n(token)
+
+NgArt ..> GoArt : HTTPS GraphQL (Apollo)
+NgArt ..> MS3Art : HTTPS REST
+NgArt ..> MS2Art : HTTPS REST
+
+GoArt ..> NeonArt : TCP/SSL\nPostgreSQL
+GoArt ..> N8nArt : HTTPS webhook\nHMAC-SHA256
+
+N8nArt ..> GotenArt : HTTP interno\ngotenberg.railway.internal:3000
+N8nArt ..> GoArt : HTTPS\nservice login
+N8nArt ..> MS3Art : HTTPS REST\nupload-request/confirm/verify
+N8nArt ..> S3Art : HTTPS PUT\n(presigned)
+N8nArt ..> SesArt : HTTPS\nSendRawEmail (SigV4)
+
+MS3Art ..> NeonArt : TCP/SSL\nPostgreSQL
+MS3Art ..> S3Art : HTTPS\npresigned PUT/GET
+
+MS2Art ..> DynamoNode : HTTPS\nAWS SDK
+
+SesArt ..> Device : Email comprobante\nSMTP/SES
+
+@enduml

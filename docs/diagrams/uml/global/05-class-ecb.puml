@@ -1,0 +1,292 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+skinparam linetype ortho
+
+top to bottom direction
+
+package "Angular Admin (Boundary)" {
+  class AuthServiceNg <<Boundary>> {
+    +login(email, password)
+    +logout()
+    +token: JWT
+  }
+  class ProductsView <<Boundary>> {
+    +listar()
+    +crear() / editar()
+  }
+  class InventoryView <<Boundary>> {
+    +setStock()
+    +adjustStock()
+  }
+  class SalesView <<Boundary>> {
+    +createSale()
+    +confirmSale()
+  }
+  class DocumentsView <<Boundary>> {
+    +verHashLedger()
+    +verify()
+  }
+  class AuditView <<Boundary>> {
+    +listarAuditoria()
+  }
+  class AiAnalyticsView <<Boundary>> {
+    +ejecutarForecast()
+    +ejecutarClustering()
+    +lanzarCampania()
+  }
+}
+
+package "React Native Mobile (Boundary)" {
+  class AuthContextRN <<Boundary>> {
+    +login()
+    +session
+  }
+  class CatalogScreen <<Boundary>>
+  class CartScreen <<Boundary>> {
+    +bolsaLocal
+    +checkout()
+  }
+  class CameraSearchScreen <<Boundary>> {
+    +pickImage()
+    +buscarSimilares()
+  }
+  class NotificationsScreen <<Boundary>> {
+    +requestPermission()
+    +registrarToken()
+  }
+}
+
+package "MS1 Go Core (Control)" {
+  class AuthService <<Control>> {
+    +Login(email, password): JWT
+    -VerifyPassword(bcrypt)
+    -checkIsActive()
+    -issueRS256(roleClaim)
+  }
+  class CatalogResolvers <<Control>> {
+    +createProduct()
+    +updateProduct()
+    +createVariant()
+    +deactivateProduct()
+    +activateProduct()
+    +replaceProductImage()
+  }
+  class InventoryResolvers <<Control>> {
+    +setInventoryStock()
+    +adjustInventoryStock()
+    +updateInventoryReorderLevel()
+    +upsertInventory()
+  }
+  class SalesService <<Control>> {
+    +createSale(): Sale
+    +confirmSale(): Order
+    -buildCustomerPayload()
+  }
+  class WebhookDispatcher <<Control>> {
+    +dispatch()
+    -signHMAC_SHA256(rawBody)
+    -POST WEBHOOK_INVOICE_URL
+  }
+  class PushSender <<Control>> {
+    +send(tokens, message)
+    -chunk()
+    -onDeviceNotRegistered_deactivate()
+  }
+}
+
+package "MS1 Go Core (Entity / Repository)" {
+  class User <<Entity>> {
+    +id
+    +email
+    +role: admin|staff|customer
+    +isActive
+    +passwordHash
+  }
+  class Product <<Entity>> {
+    +id
+    +name
+    +active
+    +imageRef
+  }
+  class ProductVariant <<Entity>> {
+    +id
+    +sku
+    +stock
+  }
+  class InventoryEntry <<Entity>> {
+    +id
+    +branchCode
+    +quantity
+    +reorderLevel
+  }
+  class Sale <<Entity>> {
+    +id
+    +status: pending|confirmed
+    +total
+  }
+  class Order <<Entity>> {
+    +id
+    +code: ORD-YYYYMMDD-####
+    +status
+  }
+  class PushToken <<Entity>> {
+    +id
+    +expoToken
+    +active
+  }
+  class WebhookOutbox <<Entity>> {
+    +id
+    +payload
+    +signature
+    +deliveredAt
+  }
+}
+
+package "MS3 Documental (Control + Entity)" {
+  class DocumentService <<Control>> {
+    +uploadRequest(): presignedPUT
+    +confirm(sha256)
+    +verify(): chainIntact
+    +downloadUrl()
+    +softDelete()
+  }
+  class LedgerService <<Control>> {
+    +append(documentId, sha256)
+    -chain_hash = SHA256(prev||'|'||sha256)
+  }
+  class AuditService <<Control>> {
+    +record(action)
+    +list()
+  }
+  class Document <<Entity>> {
+    +id
+    +s3Key
+    +sha256
+    +deleted
+  }
+  class HashLedger <<Entity>> {
+    +id
+    +document_id
+    +sha256
+    +prev_chain_hash
+    +chain_hash
+  }
+  class AuditEntry <<Entity>> {
+    +actor_user_id
+    +actor_email
+    +actor_role
+    +action: upload|read|download|edit|delete|verify
+    +request_id
+    +ip
+    +ua
+  }
+}
+
+package "MS2 Django AI (Control + Entity)" {
+  class EmbeddingService <<Control>> {
+    +encode_image(): vec112
+    -pHash(64)
+    -hsvHistogram(48)
+    -l2Normalize()
+  }
+  class SimilarityService <<Control>> {
+    +search(): matches+scores
+    -cosine()
+  }
+  class ForecastService <<Control>> {
+    +run(): Holt linear
+  }
+  class ClusteringService <<Control>> {
+    +run(): KMeans RFM
+  }
+  class ProductEmbedding <<Entity>> {
+    +productId
+    +vector112
+  }
+  class ForecastResult <<Entity>> {
+    +scope
+    +series
+  }
+  class CustomerSegment <<Entity>> {
+    +userId
+    +segment
+  }
+  class ClusterRun <<Entity>> {
+    +runId
+    +params
+  }
+}
+
+' Angular boundaries -> Go controls
+AuthServiceNg --> AuthService
+ProductsView --> CatalogResolvers
+InventoryView --> InventoryResolvers
+SalesView --> SalesService
+' Angular boundaries -> MS3 / MS2 controls
+DocumentsView --> DocumentService
+AuditView --> AuditService
+AiAnalyticsView --> ForecastService
+AiAnalyticsView --> ClusteringService
+AiAnalyticsView --> PushSender
+
+' RN boundaries -> controls
+AuthContextRN --> AuthService
+CartScreen --> SalesService
+CameraSearchScreen --> SimilarityService
+NotificationsScreen --> PushSender
+
+' Go control -> entity (with multiplicities)
+AuthService --> "0..*" User
+CatalogResolvers --> "0..*" Product
+CatalogResolvers ..> DocumentService : replaceProductImage
+InventoryResolvers --> "0..*" InventoryEntry
+SalesService --> "0..*" Sale
+SalesService --> "0..*" Order
+PushSender --> "0..*" PushToken
+
+' Go entity associations + multiplicities
+Product "1" o-- "1..*" ProductVariant
+ProductVariant "1" --> "0..*" InventoryEntry
+Sale "1" --> "1..*" ProductVariant
+Sale "1" --> "0..1" Order
+Order "1" --> "0..*" WebhookOutbox
+User "1" --> "0..*" PushToken
+User "1" --> "0..*" Sale
+
+' confirmSale -> webhook outbox -> dispatcher
+SalesService ..> WebhookOutbox : enqueue
+WebhookDispatcher --> "0..*" WebhookOutbox
+
+' MS3 control -> entity
+DocumentService --> "0..*" Document
+LedgerService --> "0..*" HashLedger
+AuditService --> "0..*" AuditEntry
+Document "1" --> "1..*" HashLedger
+Document "1" --> "0..*" AuditEntry
+
+' n8n invoice flow link (dispatcher -> MS3 boundary)
+WebhookDispatcher ..> DocumentService : via n8n /webhook/ficct-invoice
+
+' MS2 control -> entity
+EmbeddingService --> "0..*" ProductEmbedding
+SimilarityService --> "0..*" ProductEmbedding
+ForecastService --> "0..*" ForecastResult
+ClusteringService --> "0..*" CustomerSegment
+ClusteringService --> "0..*" ClusterRun
+EmbeddingService ..> SimilarityService
+
+' campaign targeting from clustering
+AiAnalyticsView ..> CustomerSegment : userIds targeting
+
+@enduml

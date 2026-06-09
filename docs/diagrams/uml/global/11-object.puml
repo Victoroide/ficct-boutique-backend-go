@@ -1,0 +1,59 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+skinparam linetype ortho
+
+object "ORD-20260609-8389 : Order" as order {
+  code = "ORD-20260609-8389"
+  status = "confirmed"
+}
+
+object "sale : Sale" as sale {
+  status = "confirmed"
+  total = 540.00
+}
+
+object "customer : User" as customer {
+  email = "cvictorhugo39@gmail.com"
+  name = "Victor Hugo"
+  role = "customer"
+  isActive = true
+  -- (sin password) --
+}
+
+object "invoice : Document" as invoice {
+  type = "invoice"
+  status = "confirmed"
+  storedSha256 = "a3f9...c1"
+}
+
+object "ledgerEntry0 : HashLedger" as ledger {
+  prev_chain_hash = "GENESIS"
+  sha256 = "a3f9...c1"
+  chain_hash = "9b2e...77"
+}
+
+object "sesEmail : SesMessage" as ses {
+  from = "dev@ficct.com"
+  to = "cvictorhugo39@gmail.com"
+  status = "sent"
+}
+
+customer "1" -- "*" sale : realiza >
+sale "1" -- "1" order : confirma >
+order "1" -- "1" invoice : genera >
+invoice "1" -- "1" ledger : asienta >
+invoice "1" -- "1" ses : notifica >
+ses --> customer : destinatario >
+
+@enduml

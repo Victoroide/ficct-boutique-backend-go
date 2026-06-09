@@ -1,0 +1,81 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+skinparam linetype ortho
+
+top to bottom direction
+
+package "Go Core (MS1) -- ruta factura/ledger" {
+
+  class SalesService <<service>> {
+    - orders: OrderRepository
+    - dispatcher: WebhookDispatcher
+    + createSale(input): Sale
+    + confirmSale(orderId): Order
+    - buildPayload(order): InvoicePayload
+  }
+
+  class WebhookDispatcher <<service>> {
+    - secret: WEBHOOK_HMAC_SECRET
+    - url: WEBHOOK_INVOICE_URL
+    + enqueue(payload): WebhookOutbox
+    + dispatch(row): Result
+    - sign(rawBody): string -- HMAC-SHA256 hex
+  }
+
+  class WebhookOutbox <<entity>> {
+    + id: UUID
+    + payload: jsonb
+    + signature: string -- sha256=<hex>
+    + status: pending|sent|failed
+    + createdAt: timestamp
+  }
+}
+
+package "MS3 Documentos (Express) -- ledger" {
+
+  class LedgerService <<service>> {
+    + append(documentId, sha256): HashLedgerEntry
+    + verifyChain(documentId): VerifyResult
+    - computeChainHash(prev, sha256): string -- SHA256(prev or sha256)
+  }
+
+  class HashLedgerEntry <<entity>> {
+    + id: UUID
+    + documentId: UUID
+    + sha256: string
+    + prevChainHash: string
+    + chainHash: string
+  }
+
+  class VerifyResult <<value>> {
+    + intact: bool
+    + chainIntact: bool
+    + storedSha: string
+    + currentSha: string
+    + brokenAt: int
+  }
+}
+
+SalesService --> WebhookDispatcher : "confirmSale ->\nenqueue + dispatch"
+WebhookDispatcher --> WebhookOutbox : "persiste fila\nfirmada"
+WebhookDispatcher ..> LedgerService : "via n8n: confirm + verify\n(POST HTTPS / JWT)"
+LedgerService --> HashLedgerEntry : "append (encadena\nprev -> chain)"
+LedgerService --> VerifyResult : "verifyChain devuelve"
+
+note bottom of LedgerService
+  Cadena de bloques / Hash Ledger:
+  chainHash = SHA256(prevChainHash || '|' || sha256)
+end note
+
+@enduml

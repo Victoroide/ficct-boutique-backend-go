@@ -1,0 +1,111 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+skinparam linetype ortho
+
+top to bottom direction
+
+package "MS1 Go Core" as Go {
+  package "cmd/server" as GoCmd
+  package "graph" as GoGraph
+  package "internal/service" as GoService
+  package "internal/repository" as GoRepo
+  package "internal/webhook" as GoWebhook
+  package "internal/models" as GoModels
+  package "migrations" as GoMigrations
+}
+
+package "Automation (n8n)" as N8N {
+  package "workflow ficct-invoice" as N8NWf
+}
+
+package "Gotenberg" as Goten {
+  package "chromium/convert/html" as GotenConv
+}
+
+package "MS3 Documental (Express)" as MS3 {
+  package "documents" as MS3Docs
+  package "ledger" as MS3Ledger
+  package "audit" as MS3Audit
+}
+
+package "MS2 Django AI" as MS2 {
+  package "apps/ai_catalog" as MS2Catalog
+  package "apps/forecasting" as MS2Forecast
+  package "apps/clustering" as MS2Cluster
+}
+
+package "Angular Admin" as Ng {
+  package "features/auth" as NgAuth
+  package "features/dashboard" as NgDash
+  package "features/products" as NgProducts
+  package "features/inventory" as NgInventory
+  package "features/documents" as NgDocs
+  package "features/audit" as NgAudit
+  package "features/ai-analytics" as NgAi
+  package "core/apollo + http" as NgCore
+}
+
+package "React Native Mobile" as RN {
+  package "screens" as RNScreens
+  package "services" as RNServices
+  package "context (auth)" as RNAuth
+}
+
+' Go internal dependencies
+GoCmd ..> GoGraph
+GoGraph ..> GoService
+GoService ..> GoRepo
+GoService ..> GoWebhook
+GoRepo ..> GoModels
+GoRepo ..> GoMigrations
+GoWebhook ..> GoModels
+
+' Angular internal + to Go/MS3/MS2
+NgAuth ..> NgCore
+NgDash ..> NgCore
+NgProducts ..> NgCore
+NgInventory ..> NgCore
+NgDocs ..> NgCore
+NgAudit ..> NgCore
+NgAi ..> NgCore
+NgCore ..> GoGraph : Apollo / POST /graphql
+NgDocs ..> MS3Docs : HttpClient
+NgDocs ..> MS3Ledger
+NgAudit ..> MS3Audit
+NgAi ..> MS2Forecast
+NgAi ..> MS2Cluster
+
+' RN internal + to Go/MS2
+RNAuth ..> RNServices
+RNScreens ..> RNServices
+RNServices ..> GoGraph : Apollo / POST /graphql
+RNServices ..> MS2Catalog : similarity/search
+
+' Invoice automation chain
+GoWebhook ..> N8NWf : signed webhook POST
+N8NWf ..> GotenConv : HTML -> PDF
+N8NWf ..> MS3Docs : upload-request / confirm
+N8NWf ..> MS3Ledger : verify
+N8NWf ..> GoService : service login (JWT)
+
+' MS3 internal deps
+MS3Docs ..> MS3Ledger
+MS3Docs ..> MS3Audit
+MS3Ledger ..> MS3Audit
+
+' MS2 internal deps
+MS2Catalog ..> MS2Forecast
+MS2Catalog ..> MS2Cluster
+
+@enduml

@@ -1,0 +1,39 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+left to right direction
+
+actor "Administrador\n(rol admin)" as Admin
+actor "Personal Logistico\n(rol staff, lectura)" as Staff
+boundary "Angular Admin\n(products / Apollo)" as Boundary
+control "Catalog resolvers\n(mutations.go)" as Resolvers
+control "CatalogService\n(catalog_service.go)" as Service
+entity "Product / ProductVariant\n(catalog.go)" as Entity
+database "NeonDB\n(PostgreSQL)" as DB
+control "Subsistema Documental\n(MS3 documentos)" as MS3
+
+Admin --> Boundary : 1: createProduct / updateProduct /\ncreateVariant / activate / deactivate
+Staff --> Boundary : 1b: query products (lectura)
+Boundary --> Resolvers : 2: mutation / query (POST /graphql)
+Resolvers --> Resolvers : 3: requireAdmin / requireAuth (rol JWT)
+Resolvers --> MS3 : 4: replaceProductImage (document id imagen)
+MS3 --> Resolvers : 5: document id confirmado
+Resolvers --> Service : 6: CreateProduct / CreateVariant (input validado)
+Service --> Entity : 7: construir / modificar Product / Variant
+Entity --> DB : 8: INSERT / UPDATE / SELECT products, product_variants
+DB --> Entity : 9: filas persistidas / leidas
+Entity --> Resolvers : 10: Product / Variant
+Resolvers --> Boundary : 11: Product / Variant actualizado o listado
+Boundary --> Admin : 12: refrescar catalogo
+@enduml

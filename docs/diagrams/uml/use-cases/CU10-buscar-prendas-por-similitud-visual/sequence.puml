@@ -1,0 +1,59 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+autonumber "<b>"
+
+actor "Cliente (movil)\n[Administrador opcional]" as Cliente
+boundary "CameraSearchScreen + ai.service\n(React Native, expo-image-picker)" as Boundary
+control "similarity views/service\n(MS2 Django, IsAuthenticated)" as Sim
+control "embedding_service\n(encode_image: pHash 64 + HSV 48)" as Embed
+entity "ficct_product_embeddings\n(112-dim L2-norm)" as Emb
+database "AWS DynamoDB" as Dynamo
+
+Cliente -> Boundary : toma o elige foto de prenda\n(expo-image-picker)
+Boundary -> Sim : POST /api/v1/ai/similarity/search/\n(multipart image, JWT RS256)
+Sim -> Sim : valida sesion\n(IsAuthenticated)
+
+alt token invalido / no autenticado
+  Sim --> Boundary : 401 no autorizado
+  Boundary --> Cliente : pide iniciar sesion
+else autenticado
+  Sim -> Embed : encode_image(imagen)
+  note right of Embed
+    Baseline CV clasico (sin red neuronal):
+    pHash 64 dims + histograma HSV 48 dims
+    = vector 112-dim L2-normalizado
+    (imagehash, Pillow, numpy)
+  end note
+  Embed --> Sim : vector consulta (112-dim)
+
+  Sim -> Emb : leer embeddings de catalogo
+  Emb -> Dynamo : Scan/Query ficct_product_embeddings
+  Dynamo --> Emb : embeddings almacenados
+  Emb --> Sim : vectores de productos
+
+  loop por cada embedding del catalogo
+    Sim -> Sim : similitud coseno\nconsulta vs producto
+  end
+  Sim -> Sim : ordena por score\ny arma matches rankeados
+
+  alt sin coincidencias / catalogo sin sync
+    Sim --> Boundary : lista vacia (0 matches)
+    Boundary --> Cliente : sin resultados similares
+  else con coincidencias
+    Sim --> Boundary : matches + scores (rankeados)
+    Boundary --> Cliente : muestra prendas similares
+  end
+end
+@enduml

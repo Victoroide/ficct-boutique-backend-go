@@ -1,0 +1,45 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+
+autonumber "<b>0"
+
+actor Administrador as admin
+boundary "Angular ai-analytics\n(ai-analytics.component)" as ui
+control "API Gateway / Vistas DRF\n(forecasting/run)" as gw
+control "forecast_service\n(Holt linear, numpy)" as svc
+entity "ficct_forecast_results" as fr
+database "DynamoDB" as ddb
+
+admin -> ui : Solicitar proyeccion de demanda (scope)
+ui -> gw : POST /api/v1/forecasting/run/\nAuthorization Bearer (JWT RS256)
+
+alt JWT valido y rol admin/staff
+  gw -> svc : run(scope)
+  svc -> fr : leer historico / corridas previas
+  fr -> ddb : Query ficct_forecast_results
+  ddb --> fr : series historicas
+  fr --> svc : datos de entrada
+  svc -> svc : Holt linear\n(double exponential smoothing)
+  svc -> fr : escribir proyeccion
+  fr -> ddb : PutItem ficct_forecast_results
+  ddb --> fr : ok
+  fr --> svc : confirmado
+  svc --> gw : serie proyectada (JSON)
+  gw --> ui : 200 OK + proyeccion
+  ui --> admin : Renderizar grafico de demanda
+else JWT invalido o rol insuficiente
+  gw --> ui : 401 / 403\n(IsAuthenticated / IsAdminOrStaff)
+  ui --> admin : Mostrar error de autorizacion
+end
+@enduml
