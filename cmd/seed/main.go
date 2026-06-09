@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/ficct-boutique/backend-go/internal/auth"
 	"github.com/ficct-boutique/backend-go/internal/config"
@@ -12,6 +13,7 @@ import (
 	"github.com/ficct-boutique/backend-go/internal/observability"
 	"github.com/ficct-boutique/backend-go/internal/repository"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 )
 
@@ -35,27 +37,12 @@ func main() {
 	catalog := repository.NewCatalogRepo(pool)
 	inv := repository.NewInventoryRepo(pool)
 
-	// 1. Admin user
-	if _, err := users.FindByEmail(ctx, "admin@ficct.local"); err != nil {
-		hash, hashErr := auth.HashPassword("Admin123!")
-		if hashErr != nil {
-			log.Fatal().Err(hashErr).Msg("hash admin password")
-		}
-		if _, err := users.Create(ctx, "admin@ficct.local", hash, "Admin Boutique", models.RoleAdmin); err != nil {
-			log.Fatal().Err(err).Msg("create admin")
-		}
-		log.Info().Msg("seeded admin user")
-	}
-
-	// 2. Customer demo user
-	customerUser, err := users.FindByEmail(ctx, "cliente@ficct.local")
-	if err != nil {
-		hash, _ := auth.HashPassword("Cliente123!")
-		customerUser, err = users.Create(ctx, "cliente@ficct.local", hash, "Maria Cliente", models.RoleCustomer)
-		if err != nil {
-			log.Warn().Err(err).Msg("create customer")
-		}
-	}
+	// Accounts are seeded strictly from environment variables — no credentials
+	// live in source. Each account upserts by email (rotating its password on
+	// every run), so credentials are rotated by changing the deployment env.
+	// Legacy/compromised accounts are deactivated via SEED_DEACTIVATE_EMAILS.
+	upsertUser(ctx, users, pool, "SEED_ADMIN_EMAIL", "SEED_ADMIN_PASSWORD", "Admin Boutique", models.RoleAdmin)
+	customerUser := upsertUser(ctx, users, pool, "SEED_CUSTOMER_EMAIL", "SEED_CUSTOMER_PASSWORD", "Maria Cliente", models.RoleCustomer)
 	if customerUser != nil {
 		if _, err := pool.Exec(ctx, `
 			INSERT INTO customers (id, user_id, full_name, phone, document_id, address)
@@ -71,13 +58,11 @@ func main() {
 		}
 	}
 
-	// 2b. Staff demo user — can view but not destructively edit
-	if _, err := users.FindByEmail(ctx, "staff@ficct.local"); err != nil {
-		hash, _ := auth.HashPassword("Staff123!")
-		if _, err := users.Create(ctx, "staff@ficct.local", hash, "Carla Staff", models.RoleStaff); err != nil {
-			log.Warn().Err(err).Msg("create staff")
-		}
-	}
+	// Staff / automation service account — can view but not destructively edit.
+	upsertUser(ctx, users, pool, "SEED_STAFF_EMAIL", "SEED_STAFF_PASSWORD", "Carla Staff", models.RoleStaff)
+
+	// Deactivate any rotated-out / legacy accounts so old credentials stop working.
+	deactivateLegacyUsers(ctx, pool, os.Getenv("SEED_DEACTIVATE_EMAILS"))
 
 	// 3. Branches
 	existing, _ := branches.List(ctx)
@@ -169,3 +154,55 @@ func main() {
 }
 
 func strPtr(s string) *string { return &s }
+
+// upsertUser creates the account if missing or rotates its password if it
+// already exists, reading the email + password from environment variables so
+// that no credential is ever stored in source. Returns nil (and skips) when
+// the env vars are not set.
+func upsertUser(ctx context.Context, users *repository.UserRepo, pool *pgxpool.Pool, emailVar, passVar, fullName string, role models.Role) *models.User {
+	email := strings.TrimSpace(os.Getenv(emailVar))
+	password := os.Getenv(passVar)
+	if email == "" || password == "" {
+		log.Warn().Str("var", emailVar).Msg("seed account skipped: credentials not provided via env")
+		return nil
+	}
+	hash, err := auth.HashPassword(password)
+	if err != nil {
+		log.Fatal().Err(err).Msg("hash seed password")
+	}
+	if existing, err := users.FindByEmail(ctx, email); err == nil && existing != nil {
+		if _, err := pool.Exec(ctx, `UPDATE users SET password_hash=$2, is_active=TRUE, updated_at=NOW() WHERE email=$1`, email, hash); err != nil {
+			log.Warn().Err(err).Str("role", string(role)).Msg("rotate seed account password")
+		} else {
+			log.Info().Str("role", string(role)).Msg("rotated seed account password")
+		}
+		return existing
+	}
+	u, err := users.Create(ctx, email, hash, fullName, role)
+	if err != nil {
+		log.Warn().Err(err).Str("role", string(role)).Msg("create seed account")
+		return nil
+	}
+	log.Info().Str("role", string(role)).Msg("seeded account")
+	return u
+}
+
+// deactivateLegacyUsers disables (is_active=FALSE) any accounts whose emails are
+// listed (comma-separated) in SEED_DEACTIVATE_EMAILS, so rotated-out or
+// previously-weak demo accounts can no longer authenticate.
+func deactivateLegacyUsers(ctx context.Context, pool *pgxpool.Pool, csv string) {
+	var emails []string
+	for _, e := range strings.Split(csv, ",") {
+		if t := strings.TrimSpace(e); t != "" {
+			emails = append(emails, t)
+		}
+	}
+	if len(emails) == 0 {
+		return
+	}
+	if _, err := pool.Exec(ctx, `UPDATE users SET is_active=FALSE, updated_at=NOW() WHERE email = ANY($1)`, emails); err != nil {
+		log.Warn().Err(err).Msg("deactivate legacy users")
+	} else {
+		log.Info().Int("count", len(emails)).Msg("deactivated legacy users")
+	}
+}
