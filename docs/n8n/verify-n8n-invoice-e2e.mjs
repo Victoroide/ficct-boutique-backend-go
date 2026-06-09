@@ -1,10 +1,15 @@
 import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+const { parse: parseFlatted } = require('/app/node_modules/flatted');
 
 const GO_GRAPHQL_URL = process.env.GO_GRAPHQL_URL || 'http://go-core:8080/graphql';
 const EXPRESS_DOCS_URL = process.env.EXPRESS_DOCS_URL || 'http://express-docs:8081';
 const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL || 'http://n8n:5678/webhook/ficct-invoice';
 const MAILPIT_API_URL = process.env.MAILPIT_API_URL || 'http://mailpit:8025';
+const N8N_SQLITE_PATH = process.env.N8N_SQLITE_PATH || '/n8n-data/.n8n/database.sqlite';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -71,6 +76,90 @@ function customerIdForEmail(email) {
   } catch {
     return null;
   }
+}
+
+function sqliteJson(sql) {
+  const out = execFileSync('sqlite3', ['-readonly', '-json', N8N_SQLITE_PATH, sql], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  }).trim();
+  return out ? JSON.parse(out) : [];
+}
+
+function workflowExecutions(limit = 20) {
+  return sqliteJson(`
+    SELECT e.id, e.status, e.finished, e.startedAt, e.stoppedAt, d.data
+    FROM execution_entity e
+    LEFT JOIN execution_data d ON d.executionId = e.id
+    WHERE e.workflowId = 'ficct-invoice-workflow'
+    ORDER BY e.id DESC
+    LIMIT ${Number(limit)}
+  `);
+}
+
+function executionSummary(row) {
+  if (!row?.data) return { nodes: [], errors: [], text: '' };
+  const text = String(row.data);
+  try {
+    const parsed = parseFlatted(text);
+    const runData = parsed?.resultData?.runData || {};
+    const errors = [];
+    for (const [nodeName, runs] of Object.entries(runData)) {
+      for (const run of runs || []) {
+        if (run?.error) {
+          errors.push({ node: nodeName, message: run.error.message || String(run.error) });
+        }
+      }
+    }
+    const resultError = parsed?.resultData?.error;
+    if (resultError) {
+      errors.push({
+        node: resultError.node?.name || resultError.node || parsed?.resultData?.lastNodeExecuted || 'unknown',
+        message: resultError.message || String(resultError),
+      });
+    }
+    return { nodes: Object.keys(runData), errors, text };
+  } catch (error) {
+    return { nodes: [], errors: [{ node: 'execution_data', message: error.message }], text };
+  }
+}
+
+async function waitForN8nSuccess(orderCode) {
+  return retry('n8n successful invoice execution', () => {
+    const executions = workflowExecutions(30);
+    const match = executions.find((row) =>
+      row.status === 'success' &&
+      row.data &&
+      String(row.data).includes(orderCode));
+    if (!match) return null;
+    const summary = executionSummary(match);
+    const requiredNodes = [
+      'Validate HMAC and Payload',
+      'Generate PDF with Gotenberg',
+      'Compute PDF SHA-256',
+      'MS3 Confirm Upload',
+      'MS3 Verify Hash Ledger',
+      'Send Invoice Email',
+    ];
+    const missing = requiredNodes.filter((node) => !summary.nodes.includes(node));
+    if (missing.length) {
+      throw new Error(`n8n success execution ${match.id} missing nodes: ${missing.join(', ')}`);
+    }
+    return { ...match, summary };
+  }, { attempts: 30, delayMs: 1000 });
+}
+
+async function waitForInvalidSignatureExecution() {
+  return retry('n8n invalid-signature execution', () => {
+    const executions = workflowExecutions(30);
+    const match = executions.find((row) => {
+      if (row.status !== 'error' || !row.data) return false;
+      const summary = executionSummary(row);
+      return summary.errors.some((error) => error.message.includes('Invalid FICCT webhook signature'));
+    });
+    if (!match) return null;
+    return { ...match, summary: executionSummary(match) };
+  }, { attempts: 30, delayMs: 1000 });
 }
 
 async function expressJson(path, token) {
@@ -214,6 +303,9 @@ async function main() {
   }
   console.log(`[ok] Mailpit received invoice email for ${orderCode} with attachment`);
 
+  const successExecution = await waitForN8nSuccess(orderCode);
+  console.log(`[ok] n8n execution ${successExecution.id} succeeded through ${successExecution.summary.nodes.length} nodes`);
+
   const document = await retry('MS3 active invoice document', () => findInvoiceDocument(orderCode, staffToken), {
     attempts: 30,
     delayMs: 1000,
@@ -253,6 +345,8 @@ async function main() {
   });
 
   await sleep(5000);
+  const invalidExecution = await waitForInvalidSignatureExecution();
+  console.log(`[ok] n8n execution ${invalidExecution.id} failed on invalid HMAC as expected`);
   const badMessages = (await mailpitMessages()).filter((msg) => messageSubject(msg).includes(badOrderCode));
   const badDocument = await findInvoiceDocument(badOrderCode, staffToken);
   if (badMessages.length > 0 || badDocument) {
