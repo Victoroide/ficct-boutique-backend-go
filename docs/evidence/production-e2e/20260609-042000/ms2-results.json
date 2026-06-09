@@ -1,0 +1,24 @@
+{
+  "service": "MS2 Django AI — GCP Cloud Run + AWS DynamoDB",
+  "visualSearch": {
+    "honestMethod": "Classical computer-vision baseline — NOT a neural network / deep learning. Perceptual hash (pHash, 64 dims) + HSV color histogram (16 bins x 3 channels = 48 dims) => 112-dim L2-normalized vector, compared by cosine similarity. Deterministic, fast, no GPU. A documented interface seam (encode_image) allows swapping in a CLIP/ResNet backbone later.",
+    "libraries": "imagehash==4.3.1, Pillow==10.4.0, numpy==1.26.4 (no torch / no tensorflow / no pretrained weights)",
+    "embeddingDim": 112,
+    "syncProof": "POST /api/v1/ai/catalog/sync/ -> stored 3 embeddings (DEMO-RED, DEMO-BLUE, DEMO-GREEN), 112-dim each, in DynamoDB table ficct_product_embeddings (errors: [])",
+    "searchProof": {
+      "endpoint": "POST /api/v1/ai/similarity/search/ (multipart image)",
+      "query": "256x256 red image",
+      "results": [
+        { "sku": "DEMO-RED", "score": 1.0 },
+        { "sku": "DEMO-BLUE", "score": 0.6717 },
+        { "sku": "DEMO-GREEN", "score": 0.3472 }
+      ],
+      "interpretation": "The exact-match image ranks 1.0 and differently-colored items rank lower via the HSV histogram — ranking is meaningful and correct, proving the end-to-end pipeline (encode query -> cosine vs stored embeddings -> ranked matches + scores)."
+    }
+  },
+  "forecasting": { "method": "Holt linear (double exponential smoothing), pure numpy", "endpoint": "POST /api/v1/forecasting/run/", "proven": "executed live from the Angular AI page (forecast computed)" },
+  "clustering": { "method": "KMeans (scikit-learn 1.5.1) on RFM features; segments persisted to DynamoDB ficct_customer_segments", "endpoint": "POST /api/v1/clustering/run/", "proven": "executed live from the Angular AI page (segments returned)" },
+  "dynamoTables": ["ficct_product_embeddings", "ficct_forecast_results", "ficct_customer_segments", "ficct_cluster_runs"],
+  "auth": "RS256 JWT (issuer ficct-go, audience ficct-django); IsAuthenticated; clustering/forecasting require admin/staff",
+  "cors": "both https://angular-admin-production.up.railway.app and https://admin.boutique.ficct.com allowed (preflight verified)"
+}

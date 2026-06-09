@@ -1,0 +1,20 @@
+{
+  "startedAt": "2026-06-09T05:04:42.815Z",
+  "out": "D:\\Repositories\\go\\ficct-boutique-backend-go\\docs\\evidence\\production-e2e\\2026-06-0905044",
+  "orderCode": "ORD-20260609-8389",
+  "finishedAt": "2026-06-09T05:05:04.944Z",
+  "pass": {
+    "ms1": true,
+    "ms3": true,
+    "automation": true,
+    "ms2": true,
+    "endpoints": {
+      "go_health": 200,
+      "n8n_health": 200,
+      "gotenberg_health": 200,
+      "ms3_health": 200,
+      "ms3_domain_health": 200,
+      "ms2_health_public": 200
+    }
+  }
+}

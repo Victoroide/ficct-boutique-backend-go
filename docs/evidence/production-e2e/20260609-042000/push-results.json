@@ -1,0 +1,16 @@
+{
+  "service": "Push notifications: RN (expo-notifications) -> Go GraphQL -> Expo Push API",
+  "implementation": {
+    "mobile": "src/services/notifications/* : requestPermission -> getExpoPushTokenAsync -> registerPushToken mutation; auto-register on login, unregister on logout; NotificationsScreen shows token + history",
+    "backend": "push_tokens table (migration 0004); mutations registerPushToken/unregisterPushToken, query myPushTokens; sendTestPushNotification (self) and sendPushCampaign(userIds) -> push_sender.go calls Expo Push API with chunking + DeviceNotRegistered deactivation"
+  },
+  "proof": {
+    "customer": { "id": "8e1923e3-551e-4ff0-a9d3-0aa95ca3be68", "role": "customer" },
+    "registerPushToken": { "platform": "web", "isActive": true },
+    "myPushTokens": [ { "platform": "web", "isActive": true } ],
+    "segmentCampaign": { "sent": 0, "failed": 1, "deactivated": 1, "errors": ["synthetic token rejected by Expo -> auto-deactivated"] },
+    "sendTestPushNotification": { "sent": 0, "failed": 1, "deactivated": 1, "errors": ["synthetic token rejected by Expo -> auto-deactivated"] }
+  },
+  "interpretation": "The full path register -> list -> segment campaign (targeted by user id) -> test dispatch is exercised end-to-end; Go reaches the Expo Push API, validates the token, and deactivates invalid ones. A synthetic token is used because an Expo *web export* cannot mint a real device push token.",
+  "physicalBlocker": "Real on-device delivery (mobile-10-push-received) requires a physical device or an Expo Go / EAS dev build to obtain a genuine ExponentPushToken. Not run here (no paid EAS build / no physical device); all code paths are implemented and proven up to the device boundary."
+}

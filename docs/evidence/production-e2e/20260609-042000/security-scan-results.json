@@ -1,0 +1,24 @@
+{
+  "scannedAt": "2026-06-09",
+  "forbiddenLiterals": ["Admin123!", "Cliente123!", "Staff123!", "admin@ficct.local", "cliente@ficct.local", "staff@ficct.local"],
+  "method": "git grep -nI for each literal across all tracked files, per repo, after remediation",
+  "repos": {
+    "ficct-boutique-backend-go": "CLEAN (git grep exit 1) — login/seed env-driven; docs/tests/evidence scrubbed; go build/vet/test pass",
+    "gotenberg": "CLEAN — docker-compose uses ${ENV}, no literal defaults",
+    "ficct-boutique-backend-express": "CLEAN — docs placeholders",
+    "ficct-boutique-backend-python": "CLEAN — docs placeholders",
+    "ficct-boutique-frontend-angular": "CLEAN — login.component empty defaults; e2e specs read process.env",
+    "ficct-boutique-mobile-react-native": "CLEAN — LoginScreen empty defaults; e2e specs read process.env"
+  },
+  "otherSecrets": {
+    "AWS_AKIA_keys": "none in any repo",
+    "neon_npg_strings": "none in any repo",
+    "private_keys": "none in any repo (.env / Railway / GitHub Secrets only)",
+    "dotenv_files": ".env git-ignored everywhere; only .env.example (placeholders) committed"
+  },
+  "credentialManagement": {
+    "seed": "cmd/seed/main.go reads SEED_*_EMAIL/PASSWORD from env; upsert rotates password; SEED_DEACTIVATE_EMAILS disables legacy accounts",
+    "rotation": "admin/customer/staff rotated to strong random passwords + non-local emails; legacy admin@ficct.local/cliente@ficct.local/staff@ficct.local DEACTIVATED (login returns 'user is inactive')",
+    "testCreds": "kept only in git-ignored docs/evidence/production-e2e/TEST_ACCOUNTS.local.md and reported to the user"
+  }
+}

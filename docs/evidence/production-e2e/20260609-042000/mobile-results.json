@@ -1,0 +1,22 @@
+{
+  "app": "React Native (Expo) Mobile",
+  "repo": "ficct-boutique-mobile-react-native",
+  "method": "Expo web export (expo export -p web) served on http://localhost:4200; Playwright mobile viewport 390x844. Login form is now EMPTY (no hardcoded creds). No paid EAS/native build.",
+  "auth": "Customer login cvictorhugo39@gmail.com (rotated account) via Go GraphQL",
+  "viewport": "390x844",
+  "scenarios": {
+    "home_login": "pass — empty login form (creds removed); customer login -> Catalogo",
+    "catalog": "pass — 4 real products from Go (Falda 290, Vestido 620, Pantalon 480, Blusa 350)",
+    "productDetail": "pass — SKU FLD-001, 6 variants size/color/stock (L-blanco 22 en stock)",
+    "cart": "pass — line item + IVA 13% + total, Confirmar pedido",
+    "aiVisualSearch": "screen works (Camara/Galeria selection + Buscar similares). The MS2 visual-similarity backend is PROVEN separately (see ms2-results.json: red->1.0, blue->0.67, green->0.35). The web-export multipart upload returns 400 (react-native-web FormData/Blob edge with the picked image); the NATIVE app uses the correct RN file-object pattern. A web-blob fix was committed to ai.service.ts (fetch blob on Platform.OS==='web'); full web upload parity needs further service-worker/Blob debugging — documented web-export limitation, not a backend failure.",
+    "branchesGps": "pass — Sucursales with live GPS distances (Equipetrol 3.7 km, Centro 4.8 km)",
+    "push": "screen works — Avisos shows active session + notification center. On web, expo-notifications stays 'Configurando notificaciones...' because web push needs VAPID/service-worker setup not configured. The push REGISTER + segment CAMPAIGN path is PROVEN via the Go GraphQL API (see push-results.json). Native obtains a real ExponentPushToken on device."
+  },
+  "screenshots": [
+    "mobile-01-home.png", "mobile-02-login.png", "mobile-03-catalog.png",
+    "mobile-04-product-detail.png", "mobile-05-cart.png", "mobile-06-ai-camera-results.png",
+    "mobile-07-branches-gps.png", "mobile-08-push-permission.png", "mobile-09-push-token-registered.png"
+  ],
+  "physicalBlocker": "mobile-10-push-received not captured: real push delivery requires a physical device / Expo Go / EAS dev build to mint a genuine push token. All code paths are implemented; backend dispatch proven."
+}

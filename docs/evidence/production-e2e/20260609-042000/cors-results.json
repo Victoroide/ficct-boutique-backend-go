@@ -1,0 +1,22 @@
+{
+    "preflight":  {
+                      "go":  {
+                                 "admin.boutique.ficct.com":  "allowed",
+                                 "angular-admin-production":  "allowed"
+                             },
+                      "ms2":  {
+                                  "admin.boutique.ficct.com":  "allowed",
+                                  "angular-admin-production":  "allowed"
+                              },
+                      "ms3":  {
+                                  "admin.boutique.ficct.com":  "allowed",
+                                  "angular-admin-production":  "allowed"
+                              }
+                  },
+    "origins":  [
+                    "https://angular-admin-production.up.railway.app",
+                    "https://admin.boutique.ficct.com"
+                ],
+    "testedAt":  "2026-06-09",
+    "method":  "curl -X OPTIONS with Origin + Access-Control-Request-* headers; verified ACAO echoes each origin"
+}
