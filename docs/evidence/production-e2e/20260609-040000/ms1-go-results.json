@@ -1,0 +1,485 @@
+{
+  "steps": {
+    "login": {
+      "staff": {
+        "id": "7fb2180d-11d1-4de8-aeb9-14ad3588b05c",
+        "email": "staff@ficct.local",
+        "role": "staff"
+      },
+      "customer": {
+        "id": "e42bac99-9f34-4505-8018-5e0809a7cf5a",
+        "email": "cliente@ficct.local",
+        "role": "customer"
+      }
+    },
+    "products": [
+      {
+        "sku": "FLD-001",
+        "name": "Falda Plisada Camel",
+        "variants": [
+          {
+            "id": "4c3d04b9-26a6-4ed0-b9f3-b13fcad90fb8",
+            "size": "L",
+            "color": "blanco",
+            "stock": [
+              {
+                "quantity": 11,
+                "reorderLevel": 3
+              },
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              }
+            ]
+          },
+          {
+            "id": "2dc41bf5-d9ba-4dc7-a721-64bf82611349",
+            "size": "L",
+            "color": "negro",
+            "stock": [
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              },
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              }
+            ]
+          },
+          {
+            "id": "b60116ba-5b69-4bbf-b5f3-2cd0d87181d4",
+            "size": "M",
+            "color": "blanco",
+            "stock": [
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              },
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              }
+            ]
+          },
+          {
+            "id": "c4c2b10d-252f-4f98-947b-248a75bf16da",
+            "size": "M",
+            "color": "negro",
+            "stock": [
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              },
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              }
+            ]
+          },
+          {
+            "id": "b23d7518-87d9-4e96-bd24-b01116db4a43",
+            "size": "S",
+            "color": "blanco",
+            "stock": [
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              },
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              }
+            ]
+          },
+          {
+            "id": "dc9707a4-806d-4e77-a86e-e8040b33744f",
+            "size": "S",
+            "color": "negro",
+            "stock": [
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              },
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "sku": "VST-001",
+        "name": "Vestido Midi Floral",
+        "variants": [
+          {
+            "id": "d07d6fb7-97a4-40a0-b53b-6502d6114b05",
+            "size": "L",
+            "color": "blanco",
+            "stock": [
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              },
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              }
+            ]
+          },
+          {
+            "id": "6fde8422-566c-4fb1-967c-9a0e075c7b8e",
+            "size": "L",
+            "color": "negro",
+            "stock": [
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              },
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              }
+            ]
+          },
+          {
+            "id": "a246c0b1-ab6d-48e8-8ec8-3b359ca9cd28",
+            "size": "M",
+            "color": "blanco",
+            "stock": [
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              },
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              }
+            ]
+          },
+          {
+            "id": "0932bb49-3e55-4113-aa33-508eb0f441ef",
+            "size": "M",
+            "color": "negro",
+            "stock": [
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              },
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              }
+            ]
+          },
+          {
+            "id": "ce89f503-5a99-45cd-885d-d3dc1f5aa035",
+            "size": "S",
+            "color": "blanco",
+            "stock": [
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              },
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              }
+            ]
+          },
+          {
+            "id": "a813892c-dabb-4308-8245-38514c2a62a7",
+            "size": "S",
+            "color": "negro",
+            "stock": [
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              },
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "sku": "PNT-001",
+        "name": "Pantalón Sastre Negro",
+        "variants": [
+          {
+            "id": "e4410fc0-3151-46e9-b95b-74d0bada1a4b",
+            "size": "L",
+            "color": "blanco",
+            "stock": [
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              },
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              }
+            ]
+          },
+          {
+            "id": "f8102d4c-3de7-47c5-a30a-6e8d44b1410c",
+            "size": "L",
+            "color": "negro",
+            "stock": [
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              },
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              }
+            ]
+          },
+          {
+            "id": "af31c389-8b69-446e-9f4c-b8a51a2cadc3",
+            "size": "M",
+            "color": "blanco",
+            "stock": [
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              },
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              }
+            ]
+          },
+          {
+            "id": "0c6ec914-1079-476b-abff-36f8dcdb687a",
+            "size": "M",
+            "color": "negro",
+            "stock": [
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              },
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              }
+            ]
+          },
+          {
+            "id": "c2479960-190a-485a-877e-06655afe759d",
+            "size": "S",
+            "color": "blanco",
+            "stock": [
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              },
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              }
+            ]
+          },
+          {
+            "id": "ac1474dd-87c9-417a-b760-a7dda8041376",
+            "size": "S",
+            "color": "negro",
+            "stock": [
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              },
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "sku": "BLZ-001",
+        "name": "Blusa Seda Marfil",
+        "variants": [
+          {
+            "id": "473ec06a-9c03-479e-8c25-aae927e2211d",
+            "size": "L",
+            "color": "blanco",
+            "stock": [
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              },
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              }
+            ]
+          },
+          {
+            "id": "e9377ba0-12ef-43ac-a1d7-e1d518f9b8d6",
+            "size": "L",
+            "color": "negro",
+            "stock": [
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              },
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              }
+            ]
+          },
+          {
+            "id": "7ce03f8b-0c20-4f92-b449-5bf31e153d13",
+            "size": "M",
+            "color": "blanco",
+            "stock": [
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              },
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              }
+            ]
+          },
+          {
+            "id": "511a0001-b71e-4c60-8733-f25033bfcfd4",
+            "size": "M",
+            "color": "negro",
+            "stock": [
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              },
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              }
+            ]
+          },
+          {
+            "id": "2bafb653-c044-487b-8f0b-cbef352873aa",
+            "size": "S",
+            "color": "blanco",
+            "stock": [
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              },
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              }
+            ]
+          },
+          {
+            "id": "1834a2bb-6ac4-483b-91fe-7f0ba7853f11",
+            "size": "S",
+            "color": "negro",
+            "stock": [
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              },
+              {
+                "quantity": 12,
+                "reorderLevel": 3
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "branches": [
+      {
+        "id": "3f2cd3c6-f6ef-43ea-8c72-d75dfcc6f7f1",
+        "code": "SC-01",
+        "name": "Boutique Centro"
+      },
+      {
+        "id": "29140e2c-fe7f-4387-a4e0-d41943899fa9",
+        "code": "SC-02",
+        "name": "Boutique Equipetrol"
+      }
+    ],
+    "inventory": {
+      "total": 48,
+      "entries": [
+        {
+          "variantId": "473ec06a-9c03-479e-8c25-aae927e2211d",
+          "quantity": 12,
+          "reorderLevel": 3,
+          "branch": {
+            "code": "SC-01"
+          }
+        },
+        {
+          "variantId": "473ec06a-9c03-479e-8c25-aae927e2211d",
+          "quantity": 12,
+          "reorderLevel": 3,
+          "branch": {
+            "code": "SC-02"
+          }
+        },
+        {
+          "variantId": "e9377ba0-12ef-43ac-a1d7-e1d518f9b8d6",
+          "quantity": 12,
+          "reorderLevel": 3,
+          "branch": {
+            "code": "SC-01"
+          }
+        },
+        {
+          "variantId": "e9377ba0-12ef-43ac-a1d7-e1d518f9b8d6",
+          "quantity": 12,
+          "reorderLevel": 3,
+          "branch": {
+            "code": "SC-02"
+          }
+        },
+        {
+          "variantId": "7ce03f8b-0c20-4f92-b449-5bf31e153d13",
+          "quantity": 12,
+          "reorderLevel": 3,
+          "branch": {
+            "code": "SC-01"
+          }
+        }
+      ]
+    },
+    "reports": {
+      "monthlySales": [
+        {
+          "month": "2026-06-01T00:00:00Z",
+          "totalSales": 327.7,
+          "saleCount": 1
+        }
+      ],
+      "popularProducts": [
+        {
+          "productName": "Falda Plisada Camel",
+          "unitsSold": 1,
+          "revenue": 290
+        }
+      ],
+      "dashboardSummary": {
+        "__typename": "DashboardSummary"
+      }
+    },
+    "sale": {
+      "saleId": "d00c95f8-2c88-4387-8f3c-df2299236adb",
+      "total": 327.7,
+      "orderCode": "ORD-20260609-2795",
+      "status": "placed"
+    }
+  },
+  "ok": true
+}

@@ -1,0 +1,28 @@
+{
+  "base": "https://ficct-ai-1093089304525.us-central1.run.app",
+  "steps": {
+    "publicHealth": {
+      "status": "ok",
+      "service": "ficct-ai"
+    },
+    "embeddingsRead": {
+      "http": 200,
+      "body": {
+        "items": []
+      }
+    },
+    "segmentsRead": {
+      "http": 200
+    },
+    "endpoints": [
+      "/api/v1/ai/similarity/search/",
+      "/api/v1/ai/catalog/sync/",
+      "/api/v1/ai/catalog/embeddings/",
+      "/api/v1/forecasting/run/",
+      "/api/v1/forecasting/latest/<scope>/",
+      "/api/v1/clustering/run/",
+      "/api/v1/clustering/segments/"
+    ]
+  },
+  "ok": true
+}

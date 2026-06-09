@@ -1,0 +1,8 @@
+{
+  "go_health": 200,
+  "n8n_health": 200,
+  "gotenberg_health": 200,
+  "ms3_health": 200,
+  "ms3_domain_health": 200,
+  "ms2_health_public": 200
+}

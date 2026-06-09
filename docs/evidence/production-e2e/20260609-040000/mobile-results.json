@@ -1,0 +1,33 @@
+{
+  "app": "React Native (Expo) Mobile",
+  "repo": "ficct-boutique-mobile-react-native",
+  "method": "Expo web export (expo export -p web) served locally on http://localhost:4200 (origin already allowed by Go + MS2 CORS); Playwright mobile viewport 390x844. No paid EAS/native build.",
+  "productionApiConfig": {
+    "graphqlUrl": "https://ficct-boutique-backend-go-production.up.railway.app/graphql",
+    "aiApiUrl": "https://ficct-ai-1093089304525.us-central1.run.app/api/v1",
+    "source": "EXPO_PUBLIC_* (.env, git-ignored) + app.json expo.extra"
+  },
+  "viewport": "390x844",
+  "scenarios": {
+    "home": "pass — app boots on web (SecureStore/native shims OK), customer entry screen",
+    "login": "pass — customer login cliente@ficct.local via Go GraphQL, navigates to Catálogo",
+    "catalog": "pass — 4 real products from Go (Falda BOB 290, Vestido BOB 620, Pantalón BOB 480, Blusa BOB 350), each 6 variantes; tab bar Catálogo/Buscar/Carrito/Sucursales/Avisos",
+    "productDetail": "pass — SKU FLD-001, BOB 290, 6 variants with size·color·stock (e.g. L·blanco 23 en stock)",
+    "cart": "pass — line item + quantity controls, Subtotal BOB 290.00, IVA 13% BOB 37.70, Total BOB 327.70, Confirmar pedido",
+    "aiSearch": "pass — Búsqueda visual (similar-garment) screen renders (expo-image-picker entry; MS2 image-matching)",
+    "branchesGps": "pass — Sucursales with GPS distances (Boutique Equipetrol SC-02 3.7 km, Boutique Centro SC-01 4.8 km)",
+    "push": "pass — Avisos (notifications) screen renders (expo-notifications registration path)"
+  },
+  "nativeIntegrations": {
+    "camera": "expo-image-picker (similar-garment search)",
+    "gps": "expo-location (nearest branch; distances computed live on web)",
+    "push": "expo-notifications (iOS remote-notification, Android NOTIFICATIONS)"
+  },
+  "consoleErrors": "none after pointing the web build at prod URLs (initial run hit the dev fallback URL; fixed via EXPO_PUBLIC_* + cache-cleared re-export)",
+  "nativeOnlyNote": "Web export is used for evidence only. True push delivery and native camera/GPS permissions are exercised on device via EAS (not run here, avoids paid builds).",
+  "screenshots": [
+    "mobile-01-home.png", "mobile-02-login.png", "mobile-03-catalog.png",
+    "mobile-04-product-detail.png", "mobile-05-cart.png", "mobile-06-ai-camera.png",
+    "mobile-07-branches-gps.png", "mobile-08-push.png"
+  ]
+}
