@@ -192,8 +192,16 @@ Variables: `GO_APP_ENV`, `GO_APP_LOG_LEVEL`, `GO_JWT_ISSUER`, `GO_JWT_AUDIENCE`,
 - Create a Railway **Postgres** plugin → its `DATABASE_URL` becomes `GO_DATABASE_URL`.
 - Railway injects `PORT`; the server binds `APP_PORT` → set service env `APP_PORT=${{PORT}}`
   (or set `APP_PORT=8080` and expose 8080).
-- Provide the RSA private/public PEMs as Railway **variables/secret files**; mount and point
-  `JWT_PRIVATE_KEY_PATH` / `JWT_PUBLIC_KEY_PATH` at them (do **not** bake prod keys into the image).
+- Provide the RSA private/public PEMs as Railway variables:
+  `JWT_PRIVATE_KEY_PEM` and `JWT_PUBLIC_KEY_PEM` (or `GO_JWT_PRIVATE_KEY_PEM` /
+  `GO_JWT_PUBLIC_KEY_PEM`). Railway cannot read local paths such as
+  `D:\Repositories\_deployment_secrets`; paste the file contents into Railway variables or use a
+  Railway-supported secret-file mount and point `JWT_PRIVATE_KEY_PATH` / `JWT_PUBLIC_KEY_PATH` at it.
+  Do **not** bake production keys into the image.
+- `WEBHOOK_INVOICE_URL` must be the n8n production webhook URL for deployed workflows. The n8n
+  Cloud test URL `https://victoroide.app.n8n.cloud/webhook-test/ficct-invoice` is only for manual
+  test executions while the n8n test listener is active; production should normally use
+  `/webhook/ficct-invoice`.
 - Run order on deploy: `migrate up && seed && server` (already enforced by the container entrypoint; `seed`
   is idempotent — consider dropping `seed` for production after first run).
 - Health check path: `/health`.

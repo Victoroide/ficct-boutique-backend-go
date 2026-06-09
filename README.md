@@ -88,7 +88,7 @@ docs/
 
 ```powershell
 copy .env.example .env
-# Generate the dev RSA keypair into .tools/keys/ (see docs/development/JWT_KEYS.md)
+# Generate or point .env at the RSA keypair (see docs/development/JWT_KEYS.md)
 docker compose up -d --build
 ```
 
@@ -105,7 +105,7 @@ Endpoints:
 docker compose -f docker-compose.full.yml up -d --build
 ```
 
-This brings up Go (8093), Express (8091), Django (8092), Angular admin (4200), React Native customer web (4300), Postgres (×2), MinIO (9010 api / 9011 console), and DynamoDB Local. See [docs/development/RUNNING_LOCALLY.md](docs/development/RUNNING_LOCALLY.md) for the full port map and bootstrap sequence.
+This brings up Go (8093), Express (8091), Django (8092), Angular admin (4200), React Native customer web (4300), Postgres (×2), MinIO (9010 api / 9011 console), and DynamoDB Local. The Go image does not bake JWT keys; compose mounts `${FICCT_DEPLOYMENT_SECRETS_DIR:-./.tools/keys}` at runtime. See [docs/development/RUNNING_LOCALLY.md](docs/development/RUNNING_LOCALLY.md) for the full port map and bootstrap sequence.
 
 ---
 
@@ -161,7 +161,7 @@ Authorization is enforced inside each resolver via `requireAuth` / `requireAdmin
 When `confirmSale(saleId)` succeeds, the service writes the event to the `webhook_outbox` table **inside the same SQL transaction** that creates the `Order` row. The dispatcher goroutine then:
 
 1. Selects unsent rows with `FOR UPDATE SKIP LOCKED` (so multiple replicas are safe).
-2. Signs `<sha256(secret + payload)>` with HMAC-SHA256.
+2. Signs the exact raw JSON payload with HMAC-SHA256.
 3. POSTs to `WEBHOOK_INVOICE_URL` with headers:
    - `X-FICCT-Event: sale.confirmed`
    - `X-FICCT-Event-Id: <uuid>`
@@ -169,6 +169,8 @@ When `confirmSale(saleId)` succeeds, the service writes the event to the `webhoo
 4. On non-2xx response, increments `attempts` and re-queues with exponential backoff capped at 5 minutes, up to `WEBHOOK_MAX_RETRIES`.
 
 If `WEBHOOK_INVOICE_URL` or `WEBHOOK_HMAC_SECRET` is unset, the dispatcher does not start and a warning is logged at startup. The events still accumulate in `webhook_outbox` and will be sent when configuration is provided.
+
+For n8n Cloud manual testing, use the test URL only while the workflow test listener is open, for example `https://victoroide.app.n8n.cloud/webhook-test/ficct-invoice`. For deployed/active n8n workflows use the production webhook URL, normally `/webhook/ficct-invoice`.
 
 ---
 
@@ -190,7 +192,7 @@ If `WEBHOOK_INVOICE_URL` or `WEBHOOK_HMAC_SECRET` is unset, the dispatcher does 
 - No `refreshToken` / `logout` mutation. The schema for token rotation exists at the DB level but isn't exposed.
 - No structured GraphQL error codes — clients distinguish by error message text.
 - The `/playground` route is wired unconditionally; remove it from `cmd/server/main.go` before any production deployment.
-- The dev RSA keys in `.tools/keys/` are **baked into the Docker image** for simplicity. In production, inject them as Docker secrets and rebuild without that COPY step.
+- JWT keys are injected at runtime. Locally, set `FICCT_DEPLOYMENT_SECRETS_DIR` to a folder containing the PEM files or use `.tools/keys`; in production, prefer `JWT_PRIVATE_KEY_PEM` / `JWT_PUBLIC_KEY_PEM` variables or mounted secret files. Do not bake production PEMs into the image.
 
 ---
 

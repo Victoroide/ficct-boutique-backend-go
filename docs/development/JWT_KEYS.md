@@ -24,6 +24,16 @@ docker run --rm -v "$(pwd)/.tools/keys:/keys" alpine/openssl rsa -in /keys/jwt_p
 
 The `.tools/keys/*.pem` files are gitignored except for a `.gitkeep` placeholder (see [.gitignore](../../.gitignore)).
 
+The Go Docker image does not bake these keys. For local Docker runs, `docker-compose.full.yml`
+mounts `${FICCT_DEPLOYMENT_SECRETS_DIR:-./.tools/keys}` into the container. If your PEM files
+live elsewhere, for example `D:/Repositories/_deployment_secrets`, set:
+
+```dotenv
+FICCT_DEPLOYMENT_SECRETS_DIR=D:/Repositories/_deployment_secrets
+FICCT_DOCKER_JWT_PRIVATE_KEY_PATH=/run/secrets/ficct/jwt_private.pem
+FICCT_DOCKER_JWT_PUBLIC_KEY_PATH=/run/secrets/ficct/jwt_public.pem
+```
+
 ## Distributing the public key
 
 Copy `.tools/keys/jwt_public_dev.pem` into the matching directory of each verifying service:
@@ -33,7 +43,9 @@ typescript/ficct-boutique-backend-express/.tools/keys/jwt_public_dev.pem
 python/django/ficct-boutique-backend-python/.tools/keys/jwt_public_dev.pem
 ```
 
-Each Dockerfile in those repos has a `COPY .tools/keys /app/.tools/keys` step, so the file must be in place **before** building those images. The `docker-compose.full.yml` build picks them up automatically.
+The Express and Django images may still expect their own public-key files during local builds;
+copy the public key there before building those repos, or configure them with their own runtime
+secret strategy.
 
 ## Token claim shape
 
@@ -62,6 +74,8 @@ In other words: the current implementation supports rotation only with a brief g
 
 ## Production posture (when this leaves the lab)
 
-- Inject the keys via Docker secrets or a secret manager (AWS KMS / HashiCorp Vault). Remove the `COPY .tools/keys /app/.tools/keys` line from the Dockerfile.
+- Inject the keys via Docker secrets, environment variables (`JWT_PRIVATE_KEY_PEM` /
+  `JWT_PUBLIC_KEY_PEM`), or a secret manager (AWS KMS / HashiCorp Vault). The Go Dockerfile no
+  longer copies `.tools/keys` into the image.
 - Use 4096-bit RSA or switch to EdDSA. The signature library (`golang-jwt/jwt/v5`) supports both.
-- Keep the private key off every machine that doesn't need to mint tokens. Right now the Go image bakes the private key in — fine for `docker compose`, not for cluster deployment.
+- Keep the private key off every machine that doesn't need to mint tokens.

@@ -5,7 +5,7 @@ This file covers two scenarios:
 1. **Standalone** — only the Go core + its Postgres, useful for backend-only work.
 2. **Full system** — all five repositories at once using `docker-compose.full.yml`.
 
-Both scenarios assume Docker Desktop (or any Docker engine with Compose v2) and that the dev RSA keypair has been generated under `.tools/keys/`. See [JWT_KEYS.md](JWT_KEYS.md).
+Both scenarios assume Docker Desktop (or any Docker engine with Compose v2) and an RSA keypair available either under `.tools/keys/` or through `FICCT_DEPLOYMENT_SECRETS_DIR` (for example `D:/Repositories/_deployment_secrets`). See [JWT_KEYS.md](JWT_KEYS.md).
 
 ---
 
