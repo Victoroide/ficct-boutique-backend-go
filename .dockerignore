@@ -14,6 +14,6 @@ docs/
 coverage.out
 bin/
 dist/
-# Note: dev RSA keys under .tools/keys/ ARE included so the dev image is
-# self-contained (docker compose has no volume mount for them). For prod,
-# inject keys via Docker secrets or a KMS-backed mount.
+# Note: RSA keys are not required in the image. docker-compose.full.yml mounts
+# them at runtime through FICCT_DEPLOYMENT_SECRETS_DIR; production should inject
+# JWT_PRIVATE_KEY_PEM/JWT_PUBLIC_KEY_PEM or mount secrets outside the build.

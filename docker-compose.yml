@@ -30,12 +30,13 @@ services:
       - .env
     environment:
       DATABASE_URL: postgres://ficct:ficct@postgres:5432/ficct_boutique?sslmode=disable
-      JWT_PRIVATE_KEY_PATH: /app/.tools/keys/jwt_private_dev.pem
-      JWT_PUBLIC_KEY_PATH: /app/.tools/keys/jwt_public_dev.pem
+      JWT_PRIVATE_KEY_PATH: ${FICCT_DOCKER_JWT_PRIVATE_KEY_PATH:-/run/secrets/ficct/jwt_private_dev.pem}
+      JWT_PUBLIC_KEY_PATH: ${FICCT_DOCKER_JWT_PUBLIC_KEY_PATH:-/run/secrets/ficct/jwt_public_dev.pem}
     ports:
       - "8080:8080"
-    # Keys are baked into the image via Dockerfile COPY. To rotate them
-    # locally, rebuild: `docker compose build --no-cache app`.
+    volumes:
+      - ${FICCT_DEPLOYMENT_SECRETS_DIR:-./.tools/keys}:/run/secrets/ficct:ro
+    # JWT keys are mounted at runtime; rebuilding is not needed to rotate them.
     restart: unless-stopped
 
 volumes:

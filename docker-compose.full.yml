@@ -37,8 +37,8 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgres://ficct:ficct@go-postgres:5432/ficct_boutique?sslmode=disable
-      JWT_PRIVATE_KEY_PATH: /app/.tools/keys/jwt_private_dev.pem
-      JWT_PUBLIC_KEY_PATH: /app/.tools/keys/jwt_public_dev.pem
+      JWT_PRIVATE_KEY_PATH: ${FICCT_DOCKER_JWT_PRIVATE_KEY_PATH:-/run/secrets/ficct/jwt_private_dev.pem}
+      JWT_PUBLIC_KEY_PATH: ${FICCT_DOCKER_JWT_PUBLIC_KEY_PATH:-/run/secrets/ficct/jwt_public_dev.pem}
       JWT_ISSUER: ficct-go
       JWT_AUDIENCE: ficct-express,ficct-django,ficct-angular,ficct-mobile
       JWT_KEY_ID: dev-1
@@ -52,7 +52,9 @@ services:
       EXPO_PUSH_API_URL: http://fake-expo-push:8080/--/api/v2/push/send
     ports:
       - "8093:8080"
-    # Keys baked into the image (see Go Dockerfile + .dockerignore note).
+    volumes:
+      - ${FICCT_DEPLOYMENT_SECRETS_DIR:-./.tools/keys}:/run/secrets/ficct:ro
+    # JWT keys are mounted at runtime. The image does not bake .tools/keys.
     # Host port 8093 — host 8080/8090 often used by other dev stacks.
     # The Go Dockerfile entrypoint runs: migrate up -> seed -> server.
 
@@ -136,7 +138,7 @@ services:
     environment:
       NODE_ENV: development
       DATABASE_URL: postgres://ficct:ficct@docs-postgres:5432/ficct_documents
-      JWT_PUBLIC_KEY_PATH: /app/.tools/keys/jwt_public_dev.pem
+      JWT_PUBLIC_KEY_PATH: ${FICCT_DOCKER_JWT_PUBLIC_KEY_PATH:-/run/secrets/ficct/jwt_public_dev.pem}
       JWT_ISSUER: ficct-go
       JWT_AUDIENCE: ficct-express
       JWT_KEY_ID: dev-1
@@ -151,7 +153,9 @@ services:
       S3_PRESIGN_EXPIRY_SECONDS: "900"
     ports:
       - "8091:8081"
-    # Keys baked into the image. For prod, inject via Docker secrets.
+    volumes:
+      - ${FICCT_DEPLOYMENT_SECRETS_DIR:-./.tools/keys}:/run/secrets/ficct:ro
+    # JWT public key is mounted at runtime so it matches Go's signing key.
     # Host port 8091.
     command: >
       sh -c "node dist/database/migrate.js && node dist/server.js"
@@ -181,7 +185,7 @@ services:
       SECRET_KEY: dev-secret-change-me
       DEBUG: "True"
       ALLOWED_HOSTS: "*"
-      JWT_PUBLIC_KEY_PATH: /app/.tools/keys/jwt_public_dev.pem
+      JWT_PUBLIC_KEY_PATH: ${FICCT_DOCKER_JWT_PUBLIC_KEY_PATH:-/run/secrets/ficct/jwt_public_dev.pem}
       JWT_ISSUER: ficct-go
       JWT_AUDIENCE: ficct-django
       DYNAMODB_ENDPOINT: http://dynamodb:8000
@@ -194,8 +198,10 @@ services:
       PORT: "8000"
     ports:
       - "8092:8000"
-    # Keys baked into the image. Code volume removed so the production-style
-    # image is used (matches the way Express runs in this stack).
+    volumes:
+      - ${FICCT_DEPLOYMENT_SECRETS_DIR:-./.tools/keys}:/run/secrets/ficct:ro
+    # JWT public key is mounted at runtime. Code volume removed so the
+    # production-style image is used (matches the way Express runs in this stack).
     # Host port 8092.
     command: >
       sh -c "python manage.py ensure_tables &&

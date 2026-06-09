@@ -28,7 +28,6 @@ COPY --from=builder /out/server /usr/local/bin/server
 COPY --from=builder /out/migrate /usr/local/bin/migrate
 COPY --from=builder /out/seed /usr/local/bin/seed
 COPY --chown=ficct:ficct migrations /app/migrations
-COPY --chown=ficct:ficct .tools/keys /app/.tools/keys
 COPY --chown=ficct:ficct docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 USER ficct
