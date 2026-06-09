@@ -1,0 +1,21 @@
+{
+  "app": "React Native (Expo) Mobile",
+  "repo": "ficct-boutique-mobile-react-native",
+  "productionApiConfig": {
+    "source": "app.json -> expo.extra (or EXPO_PUBLIC_* via src/config/env.ts)",
+    "graphqlUrl": "https://ficct-boutique-backend-go-production.up.railway.app/graphql",
+    "aiApiUrl": "https://ficct-ai-1093089304525.us-central1.run.app/api/v1"
+  },
+  "checks": {
+    "lint": "pass",
+    "typecheck": "pass",
+    "build": "no build script; native builds require EAS (not run, avoids paid builds); expo export / web target available"
+  },
+  "nativeIntegrations": {
+    "camera": "expo-image-picker (similar-garment search)",
+    "gps": "expo-location (nearest branch)",
+    "push": "expo-notifications (configured in app.json plugins; iOS remote-notification, Android NOTIFICATIONS)"
+  },
+  "uiScreenshots": "not captured in this run — Expo web/native target requires a running Metro/web server; lint + typecheck + prod-config verified instead.",
+  "backendsReachable": "Go GraphQL and MS2 (public) reachable (200) from this E2E run."
+}

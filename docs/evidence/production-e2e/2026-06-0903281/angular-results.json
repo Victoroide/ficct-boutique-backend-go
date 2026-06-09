@@ -1,0 +1,17 @@
+{
+  "app": "Angular Admin",
+  "repo": "ficct-boutique-frontend-angular",
+  "productionApiUrls": {
+    "graphqlUrl": "https://ficct-boutique-backend-go-production.up.railway.app/graphql",
+    "documentsApiUrl": "https://docs-api-boutique.ficct.com/api/v1",
+    "aiApiUrl": "https://ficct-ai-1093089304525.us-central1.run.app/api/v1"
+  },
+  "checks": {
+    "lint": "pass",
+    "typecheck": "errors only in e2e/*.spec.ts (missing @playwright/test types); app code clean",
+    "build": "pass -> dist/ficct-admin"
+  },
+  "hosting": "not provisioned (build artifact verified). Recommended: Cloudflare Pages free tier; then admin-boutique.ficct.com.",
+  "uiScreenshots": "not captured in this run — requires serving the SPA + scripted login automation; build + prod-config verified instead.",
+  "backendsReachable": "Go GraphQL, MS3 (docs-api-boutique), MS2 (public) all return 200 from this E2E run."
+}

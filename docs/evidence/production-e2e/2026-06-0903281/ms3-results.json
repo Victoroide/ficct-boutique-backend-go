@@ -1,0 +1,17 @@
+{
+  "base": "https://bptu80mcbk.execute-api.us-east-1.amazonaws.com",
+  "steps": {
+    "uploadRequest": {
+      "docId": "0b420ad0-66ba-481b-aa3d-680019c2e33d",
+      "urlHost": "ficct-boutique-documents.s3.us-east-1.amazonaws.com"
+    },
+    "s3Put": 200,
+    "confirm": "active",
+    "verify": {
+      "intact": true,
+      "chainIntact": true
+    },
+    "s3Key": "pdf/2026-06-09/63236243-605d-42c1-b46f-d5c0be03f1fe.pdf"
+  },
+  "ok": true
+}

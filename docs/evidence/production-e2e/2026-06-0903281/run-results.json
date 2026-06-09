@@ -1,0 +1,19 @@
+{
+  "startedAt": "2026-06-09T03:28:19.262Z",
+  "orderCode": "ORD-20260609-9022",
+  "finishedAt": "2026-06-09T03:28:50.269Z",
+  "pass": {
+    "ms1": true,
+    "ms3": true,
+    "automation": true,
+    "ms2": true,
+    "endpoints": {
+      "go_health": 200,
+      "n8n_health": 200,
+      "gotenberg_health": 200,
+      "ms3_health": 200,
+      "ms3_domain_health": 200,
+      "ms2_health_public": 200
+    }
+  }
+}

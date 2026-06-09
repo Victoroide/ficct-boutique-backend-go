@@ -1,0 +1,18 @@
+{
+  "steps": {
+    "invoiceDocument": {
+      "id": "dd8478bb-17e2-4626-8b0c-c798dc29cf85",
+      "status": "active",
+      "sha256": "4cb53a4b71317b1b6f2d7950f284d2a28606c87a31433d4619905bd2d8245ecb",
+      "storage_key": "pdf/2026-06-09/dc643caa-5dab-4d0a-bf6c-986bee34ea50.pdf",
+      "intact": true,
+      "chainIntact": true
+    },
+    "invalidHmac": {
+      "webhookHttp": 200,
+      "sideEffectDocument": null,
+      "noSideEffect": true
+    }
+  },
+  "ok": true
+}
