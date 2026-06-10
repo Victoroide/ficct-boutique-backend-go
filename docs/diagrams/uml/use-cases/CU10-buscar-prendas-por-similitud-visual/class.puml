@@ -1,0 +1,96 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+skinparam linetype ortho
+
+top to bottom direction
+
+package "MS2 Django AI (Boundary)" {
+  class "DRF /api/v1/ai/similarity/search/\n(SimilaritySearchView)" as SearchView <<Boundary>> {
+    +post(request) : Response
+    -MultiPartParser : multipart image
+    -IsAuthenticated (JWT RS256)
+  }
+  class "DRF /api/v1/ai/catalog/sync/\n(CatalogSyncView)" as SyncView <<Boundary>> {
+    +post(request) : Response
+    -IsAdminOrStaff
+    -batch items[] -> synced / errors
+  }
+  class "DRF /api/v1/ai/catalog/embeddings/\n(EmbeddingListView)" as ListView <<Boundary>> {
+    +get(request) : Response
+    -strip embedding vector from listing
+  }
+}
+
+package "MS1 Go Core (Boundary)" {
+  class "GraphQL /graphql\n(MS1 catalog)" as GoCore <<Boundary>> {
+    +products: provide imageUrl + metadata
+  }
+}
+
+package "MS2 Django AI (Control)" {
+  class SimilarityService <<Control>> {
+    +search(image_bytes, top_k=5) : list
+    -score = cosine(query, product)
+    -sort by score desc, take top_k
+  }
+  class "embedding_service\n(EmbeddingService)" as EmbeddingService <<Control>> {
+    +encode_image(image_bytes) : float[112]
+    +cosine_similarity(a, b) : float
+    -pHash 8x8 = 64 bits (imagehash)
+    -HSV histogram 16x3 = 48 dims
+    -L2 normalize (classical CV, NOT a neural net)
+  }
+  class CatalogSyncService <<Control>> {
+    +sync_from_image_url(product_id, image_url, name, category, sku) : dict
+    +upsert_embedding(product_id, embedding, ..) : dict
+    +all_embeddings() : list
+    -TABLE = "product_embeddings"
+  }
+  class "dynamodb.client" as DynamoClient <<Control>> {
+    +table(suffix) : Table
+    -table_name = prefix "ficct_" + suffix
+    -boto3 resource (retries=3)
+  }
+}
+
+package "MS2 Django AI (Entity)" {
+  class ProductEmbedding <<Entity>> {
+    +product_id : str (PK)
+    +embedding : str[112] (L2-norm vector)
+    +embedding_dim : 112
+    +name : str
+    +category : str
+    +image_url : str
+    +sku : str
+    +updated_at : ISO-8601
+  }
+}
+
+class "AWS DynamoDB\nficct_product_embeddings" as Dynamo <<Datastore>>
+
+SearchView --> SimilarityService : search
+SyncView --> CatalogSyncService : sync_from_image_url
+ListView --> CatalogSyncService : all_embeddings
+
+SimilarityService ..> EmbeddingService : encode_image + cosine_similarity
+SimilarityService --> "0..*" ProductEmbedding : score & rank
+CatalogSyncService ..> EmbeddingService : encode_image
+CatalogSyncService ..> GoCore : GET image_url (sync)
+CatalogSyncService --> "0..*" ProductEmbedding : upsert
+CatalogSyncService ..> DynamoClient : put_item / scan
+
+ProductEmbedding o-- "1" Dynamo
+DynamoClient --> Dynamo
+
+@enduml

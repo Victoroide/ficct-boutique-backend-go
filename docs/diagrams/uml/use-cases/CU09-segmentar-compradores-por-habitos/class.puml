@@ -1,0 +1,111 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+skinparam linetype ortho
+
+top to bottom direction
+
+package "MS2 Django AI (Boundary)" {
+  class "DRF /api/v1/clustering\n(urls.py)" as API <<Boundary>> {
+    +POST run/ : RunClusteringView
+    +GET segments/ : AllSegmentsView
+    +GET segments/{customer_id}/ : CustomerSegmentView
+  }
+}
+
+package "MS2 Django AI (Control)" {
+  class RunClusteringView <<Control>> {
+    +permission_classes = [IsAdminOrStaff]
+    +post(request) : Response
+    -build CustomerFeatures from validated_data
+  }
+  class AllSegmentsView <<Control>> {
+    +permission_classes = [IsAdminOrStaff]
+    +get(request) : Response
+  }
+  class CustomerSegmentView <<Control>> {
+    +permission_classes = [IsAdminOrStaff]
+    +get(request, customer_id) : Response
+  }
+  class ClusteringService <<Control>> {
+    -TABLE_SEGMENTS = "customer_segments"
+    -TABLE_RUNS = "cluster_runs"
+    +fit_segments(features, k=4) : List[CustomerSegment]
+    +persist(segments, metadata) : dict
+    +segment_for(customer_id) : dict
+    +all_segments() : List[dict]
+    -standardize RFM + KMeans (scikit-learn, n_init=10)
+  }
+  class RS256JWTAuthentication <<Control>> {
+    +authenticate(request) : (AuthenticatedUser, token)
+    -jwt.decode algorithms=[RS256], iss/aud, require exp/sub
+  }
+  class IsAdminOrStaff <<Control>> {
+    +has_permission(request, view) : bool
+    -role in {admin, staff}
+  }
+}
+
+package "MS2 Django AI (Entity)" {
+  class CustomerFeatures <<Entity>> {
+    +customer_id : str
+    +recency_days : float
+    +frequency : float
+    +monetary : float
+  }
+  class CustomerSegment <<Entity>> {
+    +customer_id : str
+    +cluster : int
+    +distance : float
+    +recency_days : float
+    +frequency : float
+    +monetary : float
+  }
+  class ClusterRun <<Entity>> {
+    +run_id : UUID4
+    +computed_at : ISO-8601 (UTC)
+    +segment_count : int
+    +metadata : dict
+  }
+}
+
+class "DynamoDB ficct_customer_segments" as DDBSeg <<Datastore>>
+class "DynamoDB ficct_cluster_runs" as DDBRun <<Datastore>>
+
+API --> RunClusteringView : POST run/
+API --> AllSegmentsView : GET segments/
+API --> CustomerSegmentView : GET segments/{id}/
+
+RunClusteringView ..> RS256JWTAuthentication : authenticate
+RunClusteringView ..> IsAdminOrStaff : guard
+AllSegmentsView ..> IsAdminOrStaff : guard
+CustomerSegmentView ..> IsAdminOrStaff : guard
+
+RunClusteringView --> "1" ClusteringService
+AllSegmentsView --> "1" ClusteringService
+CustomerSegmentView --> "1" ClusteringService
+
+RunClusteringView --> "1..*" CustomerFeatures
+ClusteringService ..> CustomerFeatures : fit_segments(in)
+ClusteringService --> "0..*" CustomerSegment
+ClusteringService --> "0..*" ClusterRun
+
+ClusterRun o-- "0..*" CustomerSegment
+CustomerSegment ..> CustomerFeatures : derived from RFM
+
+ClusteringService ..> DDBSeg : batch put / scan / get_item
+ClusteringService ..> DDBRun : put_item
+CustomerSegment --> DDBSeg
+ClusterRun --> DDBRun
+
+@enduml

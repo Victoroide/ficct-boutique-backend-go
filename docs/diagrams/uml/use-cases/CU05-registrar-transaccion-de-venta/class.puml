@@ -1,0 +1,103 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+skinparam linetype ortho
+
+top to bottom direction
+
+package "MS1 Go Core (Boundary)" {
+  class "GraphQL /graphql\n(schema.graphqls)" as GraphQL <<Boundary>> {
+    +createSale(input{customerId, branchId, items[]}): Sale!
+    -requireAuth (JWT: customer/staff/admin)
+    -cashierId from claims.Subject
+  }
+}
+
+package "MS1 Go Core (Control)" {
+  class SalesService <<Control>> {
+    +CreateSale(ctx, in): (Sale, []SaleItem)
+    -reject empty items (ErrEmptySaleItems)
+    -unitPrice = PriceOverride ?? BasePrice
+    -lineTotal = unitPrice * quantity
+    -begin tx then CreateWithItems
+  }
+}
+
+package "MS1 Go Core (Entity / Repository)" {
+  class SalesRepo <<Entity>> {
+    +CreateWithItems(tx, customerId, branchId, cashierId, items): (Sale, []SaleItem)
+    -subtotal = sum(lineTotal); tax = subtotal * 0.13
+    -total = subtotal + tax; status=pending; currency=BOB
+    +Find() / List(status, since, until)
+  }
+  class CatalogRepo <<Entity>> {
+    +FindVariant(id): ProductVariant
+    +FindProduct(id): Product
+  }
+  class InventoryRepo <<Entity>> {
+    +ByVariantIDs(ids): map[VariantID][]Inventory
+    +DecrementForSale(tx, variantId, branchId, qty)
+  }
+  class Sale <<Entity>> {
+    +id : UUID
+    +customerId / branchId / cashierId
+    +status : pending|confirmed|cancelled
+    +subtotal / tax / total : float64
+    +currency : BOB
+  }
+  class SaleItem <<Entity>> {
+    +id : UUID
+    +saleId / variantId : UUID
+    +quantity : int
+    +unitPrice / lineTotal : float64
+  }
+  class ProductVariant <<Entity>> {
+    +id : UUID
+    +productId : UUID
+    +size / color : string
+    +priceOverride : float64?
+  }
+  class Inventory <<Entity>> {
+    +variantId / branchId : UUID
+    +quantity / reorderLevel : int
+  }
+  class Branch <<Entity>> {
+    +id : UUID
+    +code / name : string
+  }
+}
+
+class "NeonDB (PostgreSQL)" as DB <<Datastore>>
+
+' boundary -> control
+GraphQL --> SalesService : createSale
+
+' control -> entity / repository (with multiplicities)
+SalesService --> SalesRepo
+SalesService ..> CatalogRepo : FindVariant / FindProduct
+SalesService --> "0..*" Sale
+SalesService --> "0..*" SaleItem
+SalesService ..> ProductVariant : read unitPrice basis
+
+' entity associations
+Sale "1" o-- "1..*" SaleItem
+SaleItem "0..*" --> "1" ProductVariant
+Sale "0..*" --> "1" Branch
+ProductVariant "1" --> "0..*" Inventory
+
+' persistence
+SalesRepo --> DB
+CatalogRepo --> DB
+InventoryRepo --> DB
+
+@enduml

@@ -1,0 +1,132 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+skinparam linetype ortho
+
+top to bottom direction
+
+package "Automation (Boundary)" {
+  class "n8n /webhook/ficct-invoice\n(ficct-invoice-workflow.json)" as N8N <<Boundary>> {
+    +httpMethod : POST
+    +validateHMAC(rawBody, X-FICCT-Signature)
+    -timingSafeEqual sha256=<hex> (HMAC-SHA256)
+    -reject before any side effect on mismatch
+  }
+}
+
+package "Automation (Control)" {
+  class "Gotenberg\n/forms/chromium/convert/html" as Gotenberg <<Control>> {
+    +convertHtml(files): PDF bytes
+    -Chromium HTML to PDF render
+  }
+  class InvoiceWorkflow <<Control>> {
+    +buildInvoiceHTML(payload)
+    +computePdfSha256() : SHA-256 hex
+    +loginGoServiceAccount() : JWT RS256
+    -orchestrate upload -> confirm -> verify -> email
+  }
+}
+
+package "MS3 Documental Express (Boundary)" {
+  class "DocumentController\n(document.controller.ts)" as DocCtrl <<Boundary>> {
+    +createUploadRequest(req,res) : POST /documents/upload-request
+    +confirmUpload(req,res) : POST /documents/:id/confirm
+    +verifyDocument(req,res) : GET /documents/:id/verify
+  }
+}
+
+package "MS3 Documental Express (Control)" {
+  class "DocumentService\n(document.service.ts)" as DocSvc <<Control>> {
+    +createUpload(input) : {document, upload}
+    +confirmUpload(id, recordedBy, claimedSha256) : Document
+    +verify(id) : {intact, chainIntact, storedSha, currentSha}
+    -computeSha256(storageKey) from S3 GetObject
+    -reject if claimedSha != actualSha (INTEGRITY_FAILED)
+  }
+  class "LedgerService\n(ledger.service.ts)" as Ledger <<Control>> {
+    +append({documentId, sha256, recordedBy}) : LedgerEntry
+    +verifyChain(documentId) : {intact, brokenAt}
+    -chain_hash = SHA256(prev || '|' || sha256)
+  }
+  class "AuditService\n(audit.service.ts)" as Audit <<Control>> {
+    +record(req, {action, documentId, metadata}) : AuditEntry
+  }
+  class "PresignService\n(presign.service.ts)" as Presign <<Control>> {
+    +presignUpload({key, contentType}) : PUT URL
+    +headObject(key) : {exists, size, etag}
+    -SSE AES256, presignExpirySeconds
+  }
+}
+
+package "MS3 Documental Express (Entity / Repository)" {
+  class "Document\n(documents)" as Document <<Entity>> {
+    +id : UUID
+    +storage_key : TEXT (unique)
+    +sha256 : TEXT
+    +status : pending|active|deleted
+    +category : pdf
+  }
+  class "DocumentVersion\n(document_versions)" as DocVersion <<Entity>> {
+    +id : UUID
+    +document_id : UUID
+    +sha256 : TEXT
+  }
+  class "LedgerEntry\n(hash_ledger)" as LedgerEntry <<Entity>> {
+    +id : BIGSERIAL
+    +sha256 : TEXT
+    +prev_chain_hash : TEXT
+    +chain_hash : TEXT (tamper-evident)
+  }
+  class "AuditEntry\n(audit_logs)" as AuditEntry <<Entity>> {
+    +id : UUID
+    +action : upload|verify|download|...
+    +actor_email : TEXT
+    +metadata : JSONB
+  }
+  class "DocumentRepository\n(document.repository.ts)" as DocRepo <<Entity>> {
+    +insert(input) : Document
+    +findById(id) : Document
+    +markActiveWithHash(id, sha256, size, mime) : Document
+  }
+}
+
+class "AWS SES\n(email.<region>.amazonaws.com)" as SES <<Boundary>>
+class "S3 bucket\n(ficct-boutique-documents)" as S3 <<Datastore>>
+class "NeonDB (PostgreSQL)" as DB <<Datastore>>
+
+N8N --> InvoiceWorkflow : on valid HMAC
+InvoiceWorkflow ..> Gotenberg : convert/html
+InvoiceWorkflow ..> DocCtrl : upload-request / confirm / verify
+InvoiceWorkflow ..> SES : SendRawEmail (SigV4)
+
+DocCtrl --> DocSvc : createUpload / confirmUpload / verify
+DocCtrl --> Audit : record
+
+DocSvc --> "1" DocRepo
+DocSvc ..> Presign : presignUpload / headObject
+DocSvc --> "0..*" Ledger : append / verifyChain
+DocRepo --> "0..*" Document
+
+Document "1" o--> "0..*" DocVersion
+Document "1" o--> "0..*" LedgerEntry
+Document "1" o--> "0..*" AuditEntry
+Ledger --> "0..*" LedgerEntry
+Audit --> "0..*" AuditEntry
+
+Presign ..> S3 : presigned PUT/GET
+DocSvc ..> S3 : GetObject (sha256)
+DocRepo --> DB
+Ledger --> DB
+Audit --> DB
+
+@enduml

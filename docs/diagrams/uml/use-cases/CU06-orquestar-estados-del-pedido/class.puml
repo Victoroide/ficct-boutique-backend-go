@@ -1,0 +1,114 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+skinparam linetype ortho
+
+top to bottom direction
+
+package "MS1 Go Core (Boundary)" {
+  class "GraphQL /graphql\n(schema.graphqls)" as GraphQL <<Boundary>> {
+    +confirmSale(saleId): Order!
+    +sales(status, limit, offset): [Sale!]!
+    +orders(status, limit, offset): [Order!]!
+    +sale(id): Sale
+    +order(id): Order
+  }
+}
+
+package "MS1 Go Core (Control)" {
+  class SalesService <<Control>> {
+    +ConfirmSale(ctx, saleId): Order
+    -reject if status != pending (ErrSaleNotPending)
+    -decrement inventory per item
+    -generate code ORD-YYYYMMDD-####
+    -enqueue sale.confirmed (same tx)
+  }
+  class WebhookDispatcher <<Control>> {
+    +Run(ctx) : ticker interval
+    -tick() : FetchDue(10)
+    -deliver(row)
+    -sign(secret, rawBody) : HMAC-SHA256
+    -markFailure() : exp backoff, cap 5m
+  }
+}
+
+package "MS1 Go Core (Entity / Repository)" {
+  class Sale <<Entity>> {
+    +id : UUID
+    +status : pending|confirmed|cancelled
+    +subtotal / tax / total
+    +confirmedAt
+  }
+  class SaleItem <<Entity>> {
+    +id : UUID
+    +variantId : UUID
+    +quantity
+    +unitPrice / lineTotal
+  }
+  class Order <<Entity>> {
+    +id : UUID
+    +code : ORD-YYYYMMDD-#### (unique)
+    +status : placed|preparing|ready|delivered|cancelled
+    +saleId : UUID (unique)
+  }
+  class WebhookOutbox <<Entity>> {
+    +id : UUID
+    +eventType : sale.confirmed
+    +payload : jsonb
+    +targetUrl
+    +status : pending|delivered|failed
+    +attempts / nextAttemptAt / lastError
+  }
+  class SalesRepo <<Entity>> {
+    +CreateWithItems() : status pending
+    +Confirm() : UPDATE ... WHERE status='pending'
+    +Find() / List(status)
+  }
+  class OrderRepo <<Entity>> {
+    +CreateForSale() : INSERT orders
+    +Find() / List(status)
+  }
+  class OutboxRepo <<Entity>> {
+    +Enqueue()
+    +FetchDue() : FOR UPDATE SKIP LOCKED
+    +MarkDelivered() / MarkFailed()
+  }
+}
+
+class "NeonDB (PostgreSQL)" as DB <<Datastore>>
+class "n8n webhook\n/webhook/ficct-invoice" as N8N <<Boundary>>
+
+' boundary -> control
+GraphQL --> SalesService : confirmSale / sales / orders
+
+' control -> entity (with multiplicities)
+SalesService --> "0..*" Sale
+SalesService --> "0..*" Order
+SalesService ..> WebhookOutbox : enqueue (same tx)
+SalesService --> SalesRepo
+SalesService --> OrderRepo
+SalesService --> OutboxRepo
+WebhookDispatcher --> "0..*" WebhookOutbox : FetchDue / deliver
+
+' entity associations
+Sale "1" o-- "1..*" SaleItem
+Sale "1" --> "0..1" Order
+Order "1" --> "0..*" WebhookOutbox
+
+' persistence + delivery
+SalesRepo --> DB
+OrderRepo --> DB
+OutboxRepo --> DB
+WebhookDispatcher ..> N8N : POST signed body\n(X-FICCT-Signature: sha256=<hex>)
+
+@enduml

@@ -1,0 +1,130 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+skinparam linetype ortho
+
+top to bottom direction
+
+note as N1
+  La bolsa (cart) se arma en el cliente movil (React Native).
+  El backend solo persiste cuando el checkout confirmado
+  invoca createSale. Las queries products/branches/
+  inventoryByBranch alimentan la bolsa (solo lectura).
+end note
+
+package "MS1 Go Core (Boundary)" {
+  class "GraphQL /graphql\n(schema.graphqls)" as GraphQL <<Boundary>> {
+    +createSale(input): Sale!
+    +products(category, search, limit, offset): [Product!]!
+    +branches(): [Branch!]!
+    +inventoryByBranch(branchId): [InventoryEntry!]!
+  }
+}
+
+package "MS1 Go Core (Control)" {
+  class SalesService <<Control>> {
+    +CreateSale(ctx, in): (Sale, []SaleItem)
+    -reject empty bag (ErrEmptySaleItems)
+    -unitPrice = PriceOverride ?? BasePrice
+    -lineTotal = unitPrice * quantity
+    -tax = subtotal * 0.13 (IVA), total = subtotal + tax
+    -persist atomically in a tx (status = pending)
+  }
+}
+
+package "MS1 Go Core (Entity / Repository)" {
+  class Sale <<Entity>> {
+    +id : UUID
+    +branchId : UUID
+    +customerId : UUID (0..1)
+    +status : pending|confirmed|cancelled
+    +subtotal : float
+    +tax : float
+    +total : float
+    +currency : BOB
+  }
+  class SaleItem <<Entity>> {
+    +id : UUID
+    +variantId : UUID
+    +quantity : int
+    +unitPrice : float
+    +lineTotal : float
+  }
+  class SalesRepo <<Entity>> {
+    +CreateWithItems(ctx, tx, customerId, branchId, cashierId, items): (Sale, []SaleItem)
+    +Find(ctx, id): (Sale, []SaleItem)
+    +Pool(): *pgxpool.Pool
+  }
+
+  class ProductVariant <<Entity>> {
+    +id : UUID
+    +productId : UUID
+    +size : string
+    +color : string
+    +priceOverride : float (0..1)
+  }
+  class CatalogRepo <<Entity>> {
+    +FindVariant(ctx, id): ProductVariant
+    +FindProduct(ctx, id): Product
+    +ListProducts(ctx, category, search, ...): [Product]
+  }
+  class Inventory <<Entity>> {
+    +variantId : UUID
+    +branchId : UUID
+    +quantity : int
+    +reorderLevel : int
+  }
+  class InventoryRepo <<Entity>> {
+    +ByBranch(ctx, branchId): [Inventory]
+  }
+  class Branch <<Entity>> {
+    +id : UUID
+    +code : string
+    +name : string
+    +isActive : bool
+  }
+  class BranchRepo <<Entity>> {
+    +List(ctx): [Branch]
+    +Find(ctx, id): Branch
+  }
+}
+
+class "NeonDB (PostgreSQL)" as DB <<Datastore>>
+
+GraphQL --> SalesService : createSale
+GraphQL ..> CatalogRepo : products
+GraphQL ..> BranchRepo : branches
+GraphQL ..> InventoryRepo : inventoryByBranch
+
+SalesService --> "1" SalesRepo
+SalesService ..> CatalogRepo : FindVariant / FindProduct
+SalesService --> "1" Sale
+SalesService --> "1..*" SaleItem
+
+Sale "1" o-- "1..*" SaleItem
+SaleItem "0..*" --> "1" ProductVariant
+Inventory "0..*" --> "1" ProductVariant
+Inventory "0..*" --> "1" Branch
+
+SalesRepo ..> Sale : maps rows
+SalesRepo ..> SaleItem : maps rows
+CatalogRepo ..> ProductVariant : maps rows
+InventoryRepo ..> Inventory : maps rows
+BranchRepo ..> Branch : maps rows
+
+SalesRepo --> DB
+CatalogRepo --> DB
+InventoryRepo --> DB
+BranchRepo --> DB
+
+@enduml

@@ -1,0 +1,91 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+skinparam linetype ortho
+
+top to bottom direction
+
+package "MS2 Django AI (Boundary)" {
+  class "DRF /api/v1/forecasting/\n(RunForecastView)" as RunView <<Boundary>> {
+    +post(request): Response
+    -permission_classes = [IsAdminOrStaff]
+    -POST /run/ -> forecast_series + persist
+  }
+  class "DRF /api/v1/forecasting/\n(LatestForecastView)" as LatestView <<Boundary>> {
+    +get(request, scope): Response
+    -permission_classes = [IsAdminOrStaff]
+    -GET /latest/<scope>/
+  }
+}
+
+package "MS2 Django AI (Auth Control)" {
+  class RS256JWTAuthentication <<Control>> {
+    +authenticate(request): (AuthenticatedUser, token)
+    -jwt.decode(algorithms=["RS256"])
+    -verify iss/aud, require exp/iat/sub
+  }
+  class "IsAdminOrStaff\n(HasRole)" as IsAdminOrStaff <<Control>> {
+    +has_permission(request, view): bool
+    -roles = {admin, staff}
+  }
+}
+
+package "MS2 Django AI (Control)" {
+  class ForecastService <<Control>> {
+    +forecast_series(series, horizon=4, alpha=0.6, beta=0.2): List[ForecastPoint]
+    +persist(scope, points, metadata): dict
+    +latest(scope): dict
+    -Holt linear (double exponential smoothing), numpy
+    -TABLE = "forecast_results"
+  }
+  class ForecastRequestSerializer <<Control>> {
+    +scope : CharField(max 120)
+    +series : ListField(Float >=0, 1..240)
+    +horizon : Integer 1..24 (default 4)
+  }
+}
+
+package "MS2 Django AI (Entity / Repository)" {
+  class ForecastPoint <<Entity>> {
+    +period_index : int
+    +value : float
+  }
+  class "ForecastResult\n(forecast_results item)" as ForecastResult <<Entity>> {
+    +scope : str (HASH)
+    +computed_at : ISO-8601 (RANGE)
+    +horizon : int
+    +points : [ForecastPoint]
+    +metadata : dict
+  }
+  class "table()\n(dynamodb/client)" as TableClient <<Entity>> {
+    +put_item(Item)
+    +query(KeyConditionExpression, ScanIndexForward, Limit)
+    -table_name = PREFIX + suffix
+  }
+}
+
+class "DynamoDB\n(ficct_forecast_results)" as DDB <<Datastore>>
+
+RunView --> IsAdminOrStaff : permission_classes
+LatestView --> IsAdminOrStaff : permission_classes
+IsAdminOrStaff ..> RS256JWTAuthentication : <<uses>> RS256 user
+RunView --> "1" ForecastRequestSerializer
+RunView --> "1" ForecastService
+LatestView --> "1" ForecastService
+ForecastService --> "0..*" ForecastPoint
+ForecastService ..> ForecastResult : persist / latest
+ForecastResult o-- "1..*" ForecastPoint
+ForecastService --> "1" TableClient
+TableClient --> DDB : put_item / query
+
+@enduml

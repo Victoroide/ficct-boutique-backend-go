@@ -1,0 +1,155 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+skinparam linetype ortho
+
+top to bottom direction
+
+package "MS1 Go Core (Boundary)" {
+  class "GraphQL /graphql\n(schema.graphqls)" as GoGraphQL <<Boundary>> {
+    +login(input: LoginInput!): AuthPayload!
+    +register / protected mutations
+  }
+}
+
+package "MS1 Go Core (Control)" {
+  class AuthService <<Control>> {
+    +Login(ctx, email, password): AuthResult
+    +Register(ctx, email, password, fullName, role): User
+    -VerifyPassword (Argon2id)
+  }
+  class TokenIssuer <<Control>> {
+    +IssueAccess(userID, email, role, branchID): (token, exp)
+    -SigningMethodRS256, kid header
+    -iss / aud / sub / exp claims
+  }
+  class "authz guards\n(graph/authz.go)" as GoGuards <<Control>> {
+    +requireAuth(ctx)
+    +requireAdmin(ctx) : Role == admin
+    +requireAdminOrStaff(ctx)
+    -reads ClaimsFromContext (ErrForbidden)
+  }
+  class "OptionalAuth / RequireAuth\n(middleware/auth.go)" as GoMiddleware <<Control>> {
+    +RequireAuth(verifier): handler
+    +OptionalAuth(verifier): handler
+    -extractBearer(r)
+  }
+}
+
+package "MS1 Go Core (Entity / Repository)" {
+  class User <<Entity>> {
+    +ID : UUID
+    +Email : string
+    +PasswordHash : string (argon2id)
+    +Role : admin|staff|customer|system
+    +IsActive : bool
+  }
+  class UserRepo <<Entity>> {
+    +FindByEmail(ctx, email): User
+    +FindByID(ctx, id): User
+    +Create(ctx, email, hash, fullName, role): User
+  }
+  class Claims <<Entity>> {
+    +Role : Role
+    +Email : string
+    +BranchID : UUID (0..1)
+    +Subject : userID
+  }
+}
+
+package "MS2 Django AI (Control)" {
+  class RS256JWTAuthentication <<Control>> {
+    +authenticate(request): (AuthenticatedUser, token)
+    -jwt.decode algorithms=[RS256]
+    -verify iss / aud, require sub+role
+  }
+  class HasRole <<Control>> {
+    +has_permission(request, view): bool
+    -user.role in self.roles
+  }
+  class "IsAdmin / IsAdminOrStaff\n(permissions.py)" as MS2Bound <<Control>> {
+    +IsAdmin = role_permission('admin')
+    +IsAdminOrStaff = role_permission('admin','staff')
+  }
+}
+
+package "MS2 Django AI (Entity)" {
+  class AuthenticatedUser <<Entity>> {
+    +id / pk : str (sub)
+    +email : str
+    +role : str
+    +claims : dict
+    -is_authenticated = True
+  }
+}
+
+package "MS3 Express (Boundary)" {
+  class "Express routes\n(auditRouter, ...)" as ExRoutes <<Boundary>> {
+    +use(requireAuth, requireRoles('admin'))
+    +GET /audit
+  }
+}
+
+package "MS3 Express (Control)" {
+  class "auth middleware\n(middleware/auth.ts)" as ExGuards <<Control>> {
+    +requireAuth(req,res,next)
+    +requireRoles(...roles): handler
+    +optionalAuth(req,res,next)
+    -jwt.verify(token, publicKey, RS256)
+  }
+  class AuditService <<Control>> {
+    +record(req, input): AuditEntry
+    +list(filters): AuditEntry[]
+    -actorRole = req.auth.role
+  }
+}
+
+package "MS3 Express (Entity / Repository)" {
+  class AuditEntry <<Entity>> {
+    +id : UUID
+    +actor_user_id / actor_email / actor_role
+    +action : upload|read|download|edit|delete|verify
+    +document_id : UUID (0..1)
+    +created_at : Date
+  }
+  class AuditRepository <<Entity>> {
+    +insert(input): AuditEntry
+    +list(filters): AuditEntry[]
+  }
+}
+
+class "NeonDB (PostgreSQL)\nusers" as DBUsers <<Datastore>>
+class "NeonDB (PostgreSQL)\naudit_logs" as DBAudit <<Datastore>>
+
+GoGraphQL --> AuthService : login
+GoMiddleware --> GoGuards : populates Claims
+AuthService --> "0..*" UserRepo
+UserRepo o-- "0..*" User
+AuthService --> TokenIssuer : IssueAccess
+TokenIssuer ..> Claims : signs RS256 JWT
+GoGuards --> "0..1" Claims
+UserRepo --> DBUsers
+
+RS256JWTAuthentication ..> TokenIssuer : verifies RS256 JWT (public key)
+RS256JWTAuthentication --> "0..1" AuthenticatedUser
+MS2Bound --> HasRole
+HasRole --> "0..1" AuthenticatedUser
+
+ExRoutes --> ExGuards : requireAuth + requireRoles
+ExGuards ..> TokenIssuer : verifies RS256 JWT (public key)
+ExRoutes --> AuditService : record on protected op
+AuditService --> "0..*" AuditRepository
+AuditRepository o-- "0..*" AuditEntry
+AuditRepository --> DBAudit
+
+@enduml

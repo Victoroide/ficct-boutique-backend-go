@@ -1,0 +1,96 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+skinparam linetype ortho
+
+top to bottom direction
+
+package "MS1 Go Core (Boundary)" {
+  class "GraphQL /graphql\n(schema.graphqls)" as GraphQL <<Boundary>> {
+    +registerPushToken(input): PushToken!
+    +unregisterPushToken(token): Boolean!
+    +sendTestPushNotification(title, body): SendPushResult!
+    +sendPushCampaign(input{title,body,userIds}): SendPushResult!
+    +myPushTokens: [PushToken!]!
+  }
+}
+
+package "MS1 Go Core (Control)" {
+  class "Push Resolver\n(graph/mutations.go)" as Resolver <<Control>> {
+    +RegisterPushToken(ctx, input): PushToken
+    +SendPushCampaign(ctx, input): SendPushResult
+    +SendTestPushNotification(ctx, title, body): SendPushResult
+    -requireAdmin / requireAuth (RBAC)
+    -map UserIDs -> []uuid.UUID
+  }
+  class "PushSender\n(push_sender.go)" as PushSender <<Control>> {
+    +SendCampaignToUsers(ctx, userIDs, title, body, data): SendResult
+    +SendTestToCaller(ctx, userID, title, body): SendResult
+    +SendToTokens(ctx, tokens, title, body, data): SendResult
+    -postMessages(ctx, []ExpoMessage): []ExpoTicket
+    -chunkStrings(tokens, 100) : batches of 100
+    -deactivate on DeviceNotRegistered
+  }
+  class SendResult <<Control>> {
+    +Sent : int
+    +Failed : int
+    +Deactivated : int
+    +Errors : []string
+  }
+}
+
+package "MS1 Go Core (Entity / Repository)" {
+  class PushToken <<Entity>> {
+    +ID : UUID
+    +UserID : UUID
+    +Token : string (ExponentPushToken[...])
+    +Platform : ios|android|web
+    +IsActive : bool
+    +LastSeenAt : time.Time
+  }
+  class PushTokenRepo <<Entity>> {
+    +Upsert(ctx, userID, token, platform, deviceID): PushToken
+    +ListActiveForUsers(ctx, userIDs): []PushToken
+    +ListAllActive(ctx): []PushToken
+    +ListActiveByUser(ctx, userID): []PushToken
+    +DeactivateByToken(ctx, token) : is_active=false (any owner)
+    +Deactivate(ctx, userID, token) : owner-scoped
+  }
+}
+
+package "MS2 Django AI (Entity)" {
+  class CustomerSegment <<Entity>> {
+    +customer_id : str
+    +cluster : int (KMeans RFM)
+    +distance : float
+  }
+}
+
+class "NeonDB (PostgreSQL)\npush_tokens" as DB <<Datastore>>
+class "DynamoDB\nficct_customer_segments" as Dynamo <<Datastore>>
+class "Expo Push API\n/--/api/v2/push/send" as Expo <<Boundary>>
+
+GraphQL --> Resolver : registerPushToken / sendPushCampaign
+Resolver --> PushSender
+Resolver --> "1" PushTokenRepo
+PushSender --> "1" PushTokenRepo
+PushSender ..> SendResult : returns
+PushTokenRepo --> "0..*" PushToken
+PushToken "0..*" --> "1" CustomerSegment : user_id
+PushTokenRepo --> DB
+PushSender ..> Expo : POST chunk (<=100)
+PushSender ..> PushTokenRepo : DeactivateByToken
+Resolver ..> CustomerSegment : userIds (segment targeting)
+CustomerSegment --> Dynamo
+
+@enduml

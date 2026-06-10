@@ -1,0 +1,101 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+skinparam linetype ortho
+
+top to bottom direction
+
+package "MS1 Go Core (Boundary)" {
+  class "GraphQL /graphql\n(schema.graphqls)" as GraphQL <<Boundary>> {
+    +inventoryByBranch(branchId): [InventoryEntry!]!
+    +inventoryEntries(filter, limit, offset): InventoryPage!
+    +setInventoryStock(variantId, branchId, quantity): InventoryEntry!
+    +adjustInventoryStock(variantId, branchId, delta): InventoryEntry!
+    +updateInventoryReorderLevel(variantId, branchId, reorderLevel): InventoryEntry!
+    +upsertInventory(input): InventoryEntry!
+  }
+}
+
+package "MS1 Go Core (Control)" {
+  class Resolver <<Control>> {
+    +InventoryByBranch(ctx, branchId): []InventoryEntry
+    +InventoryEntries(ctx, filter, limit, offset): InventoryPage
+    +SetInventoryStock(ctx, variantId, branchId, quantity)
+    +AdjustInventoryStock(ctx, variantId, branchId, delta)
+    +UpdateInventoryReorderLevel(ctx, variantId, branchId, level)
+    +UpsertInventory(ctx, input)
+    -requireAdminOrStaff(ctx) : RBAC guard
+  }
+  class CatalogService <<Control>> {
+    +UpsertInventory(ctx, variantId, branchId, quantity, reorderLevel): Inventory
+    -reject quantity<0 || reorderLevel<0 (ErrInvalidInput)
+  }
+}
+
+package "MS1 Go Core (Entity / Repository)" {
+  class InventoryRepo <<Entity>> {
+    +Upsert(variantId, branchId, qty, reorder) : INSERT ON CONFLICT
+    +SetStock(variantId, branchId, qty) : absolute
+    +AdjustStock(variantId, branchId, delta) : GREATEST(0, qty+delta)
+    +SetReorderLevel(variantId, branchId, level)
+    +ByBranch(branchId): []Inventory
+    +SearchInventory(filter, limit, offset): ([]Inventory, total)
+  }
+  class BranchRepo <<Entity>> {
+    +List(ctx): []Branch
+    +Find(ctx, id): Branch
+  }
+  class Inventory <<Entity>> {
+    +id : UUID
+    +variantId : UUID
+    +branchId : UUID
+    +quantity : int
+    +reorderLevel : int
+    -lowStock = quantity <= reorderLevel
+  }
+  class Branch <<Entity>> {
+    +id : UUID
+    +code : string (unique)
+    +name : string
+    +isActive : bool
+  }
+  class ProductVariant <<Entity>> {
+    +id : UUID
+    +sku : string
+    +size : string
+    +color : string
+  }
+  class InventoryFilter <<Entity>> {
+    +branchId : UUID?
+    +search : string?
+    +onlyLowStock : bool
+    +status : ok|low|critical|inactive
+  }
+}
+
+class "NeonDB (PostgreSQL)" as DB <<Datastore>>
+
+GraphQL --> Resolver : inventory ops
+Resolver --> "1" CatalogService : upsertInventory
+Resolver --> "1" InventoryRepo
+Resolver --> "1" BranchRepo
+Resolver ..> InventoryFilter : build filter
+CatalogService --> "1" InventoryRepo : Upsert
+InventoryRepo --> "0..*" Inventory
+BranchRepo --> "0..*" Branch
+Inventory "0..*" --> "1" Branch : branchId
+Inventory "0..*" --> "1" ProductVariant : variantId
+InventoryRepo --> DB
+BranchRepo --> DB
+
+@enduml

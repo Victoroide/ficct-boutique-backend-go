@@ -1,0 +1,106 @@
+@startuml
+' Embedded standalone style block (replicated per file; standalone)
+skinparam shadowing false
+skinparam backgroundColor White
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam style strictuml
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam padding 3
+skinparam classAttributeIconSize 0
+hide circle
+skinparam linetype ortho
+
+top to bottom direction
+
+package "MS1 Go Core (Boundary)" {
+  class "GraphQL /graphql\n(schema.graphqls)" as GraphQL <<Boundary>> {
+    +product(id): Product
+    +products(category, search, includeInactive, limit, offset): [Product!]!
+    +createProduct(input): Product!
+    +updateProduct(input): Product!
+    +createVariant(input): Variant!
+    +createCollection(input): Collection!
+    +deactivateProduct(id) / activateProduct(id): Product!
+    +replaceProductImage(id, newImageDocumentId): Product!
+  }
+}
+
+package "MS1 Go Core (Control)" {
+  class CatalogResolvers <<Control>> {
+    +CreateProduct(ctx, args): ProductResolver
+    +UpdateProduct(ctx, args): ProductResolver
+    +DeactivateProduct / ActivateProduct(ctx, id)
+    +ReplaceProductImage(ctx, id, newImageDocumentID)
+    +CreateCollection(ctx, args): CollectionResolver
+    -requireAdmin(ctx) / requireAuth(ctx)
+  }
+  class CatalogService <<Control>> {
+    +CreateProduct(ctx, in CreateProductInput): Product
+    +CreateVariant(ctx, in CreateVariantInput): ProductVariant
+    -validate SKU/Name/Category (ErrInvalidInput)
+    -default Currency = "BOB"
+  }
+}
+
+package "MS1 Go Core (Entity / Repository)" {
+  class CatalogRepo <<Entity>> {
+    +CreateProduct(ctx, p): Product
+    +UpdateProduct(ctx, id, ...): Product
+    +SetProductActive(ctx, id, active): Product
+    +ReplaceProductImage(ctx, id, newImageDocID): (Product, oldDoc) -- tx, bumps image_replaced_at
+    +CreateVariant / CreateCollection
+    +FindProduct / ListProducts(includeInactive)
+  }
+  class Product <<Entity>> {
+    +id : UUID
+    +sku : string (unique)
+    +category : string
+    +basePrice : float64
+    +currency : BOB
+    +imageDocumentId : UUID (MS3 ref)
+    +isActive : bool
+  }
+  class ProductVariant <<Entity>> {
+    +id : UUID
+    +size : string
+    +color : string
+    +priceOverride : float64
+    +isActive : bool
+  }
+  class Collection <<Entity>> {
+    +id : UUID
+    +name : string
+    +season : string
+    +isActive : bool
+  }
+}
+
+package "MS3 Documental (Control)" {
+  class DocumentService <<Boundary>> {
+    +findById(id): DocumentRow
+    +download(id): signed URL
+    +softDelete(id): DocumentRow
+  }
+}
+
+class "NeonDB (PostgreSQL)" as DB <<Datastore>>
+class "S3 / MinIO (private images)" as S3 <<Datastore>>
+
+GraphQL --> CatalogResolvers : createProduct / replaceProductImage
+CatalogResolvers --> CatalogService : CreateProduct / CreateVariant
+CatalogResolvers --> "1" CatalogRepo : UpdateProduct / SetProductActive / ReplaceProductImage
+CatalogService --> "1" CatalogRepo
+CatalogRepo --> "0..*" Product
+CatalogRepo --> "0..*" ProductVariant
+CatalogRepo --> "0..*" Collection
+Collection "1" o--> "0..*" Product
+Product "1" o--> "0..*" ProductVariant
+CatalogRepo --> DB
+CatalogResolvers ..> DocumentService : replaceProductImage (imageDocumentId)
+Product ..> DocumentService : imageDocumentId
+DocumentService --> S3 : presigned image object
+
+@enduml
