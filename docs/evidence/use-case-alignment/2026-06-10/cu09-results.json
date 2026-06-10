@@ -1,0 +1,38 @@
+{
+  "useCase": "CU09 - Segmentar compradores por habitos",
+  "diagramsUnchanged": true,
+  "before": { "ms2Backend": "implemented (segments lacked RFM fields)", "angularUI": "partial (no GET segments; distance-vs-index chart)" },
+  "after": { "ms2Backend": "implemented (+RFM persisted/returned)", "angularUI": "implemented (GET segments + RFM scatter)" },
+  "implemented": {
+    "ms2": {
+      "repo": "python/django/ficct-boutique-backend-python",
+      "files": [
+        "apps/clustering/services/clustering_service.py (CustomerSegment + persist carry recency_days/frequency/monetary)",
+        "apps/clustering/viewsets/__init__.py (run/segments/segment views return RFM)",
+        "apps/clustering/serializers/__init__.py (SegmentSerializer + RFM fields)",
+        "apps/clustering/tests/test_clustering_service.py (asserts RFM on segments)"
+      ]
+    },
+    "angular": {
+      "repo": "angular/ficct-boutique-frontend-angular",
+      "files": [
+        "src/app/features/ai-analytics/ai-analytics.component.ts (loadSegments/fetchSegments via GET; Segment+RFM)",
+        "src/app/features/ai-analytics/ai-analytics.component.html (RFM table cols, Ver segmentos guardados, empty state)",
+        "src/app/shared/charts/chart-defaults.ts (clusterScatterData/Options -> true RFM scatter)"
+      ]
+    }
+  },
+  "runtimeVerification": {
+    "run": "POST /api/v1/clustering/run/ (KMeans scikit-learn over standardized RFM)",
+    "readBack": "GET /api/v1/clustering/segments/ (DynamoDB scan)",
+    "clusters": "c1/c2/c3 -> Cluster 0 (recent, frequent, high spend); c4/c5/c6 -> Cluster 1 (lapsed, low spend)",
+    "visualization": "RFM scatter x=Recency, y=Monetary, bubble size=Frequency, colour=cluster (honest classical-ML, no neural claim)",
+    "permissions": "IsAdminOrStaff over RS256 JWT",
+    "consoleErrors": "none"
+  },
+  "screenshots": [
+    "cu09-ai-analytics-segments-chart.png",
+    "cu09-ai-analytics-segments-table.png",
+    "cu09-ai-analytics-responsive.png"
+  ]
+}

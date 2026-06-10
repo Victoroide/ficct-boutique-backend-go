@@ -1,0 +1,17 @@
+{
+  "useCase": "CU02 - Gestionar roles y permisos",
+  "diagramsUnchanged": true,
+  "verdict": "verified - no code added (diagram describes cross-cutting RBAC, not a management screen)",
+  "evidence": {
+    "go": "RS256 JWT with role claim (internal/auth/jwt.go); per-resolver requireAuth/requireAdmin/requireAdminOrStaff (graph/authz.go)",
+    "ms3": "requireRoles middleware on document routes (src/middleware/auth.ts), 403 on insufficient role",
+    "ms2": "RS256JWTAuthentication + IsAdminOrStaff (apps/common/auth)",
+    "angular": "login.component + AuthService + authGuard + roleGuard wired on routes/nav"
+  },
+  "runtimeVerification": {
+    "login": "admin@ficct.local issued RS256 JWT (role=admin)",
+    "roleGatedRoutes": "/orders, /ai-analytics, /audit reachable as admin; nav gating by role works",
+    "crossServiceJWT": "Go-issued token accepted by MS2 (clustering/forecasting calls succeeded)"
+  },
+  "screenshots": ["(covered by cu06/cu09 logged-in admin views)"]
+}

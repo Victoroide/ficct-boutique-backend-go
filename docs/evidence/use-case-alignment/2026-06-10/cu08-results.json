@@ -1,0 +1,16 @@
+{
+  "useCase": "CU08 - Consultar proyeccion de demanda",
+  "diagramsUnchanged": true,
+  "verdict": "verified - already implemented end-to-end; no code added",
+  "evidence": {
+    "ms2": "DRF POST /api/v1/forecasting/run/ (RunForecastView, IsAdminOrStaff); forecast_service Holt linear (numpy); DynamoDB ficct_forecast_results",
+    "angular": "ai-analytics component posts forecasting/run and renders the demand line chart"
+  },
+  "runtimeVerification": {
+    "action": "Generar pronostico -> POST /api/v1/forecasting/run/",
+    "result": "Holt-linear projected series rendered as line chart (horizon 4)",
+    "permissions": "IsAdminOrStaff over RS256 JWT",
+    "consoleErrors": "none"
+  },
+  "screenshots": ["cu09-ai-analytics-forecast.png"]
+}

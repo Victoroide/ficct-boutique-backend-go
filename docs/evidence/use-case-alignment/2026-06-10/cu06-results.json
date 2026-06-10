@@ -1,0 +1,32 @@
+{
+  "useCase": "CU06 - Orquestar estados del pedido",
+  "diagramsUnchanged": true,
+  "before": { "goBackend": "implemented", "angularUI": "missing" },
+  "after": { "goBackend": "implemented", "angularUI": "implemented" },
+  "implemented": {
+    "repo": "angular/ficct-boutique-frontend-angular",
+    "files": [
+      "src/app/features/orders/orders.service.ts",
+      "src/app/features/orders/orders.component.ts",
+      "src/app/features/orders/orders.component.html",
+      "src/app/app.routes.ts (route /orders, roleGuard admin/staff)",
+      "src/app/core/layout/main-layout/main-layout.component.ts (nav item Pedidos)"
+    ],
+    "backendChanges": "none (sales/orders/sale/order queries and confirmSale mutation already existed)"
+  },
+  "runtimeVerification": {
+    "login": "admin@ficct.local (seeded, throwaway)",
+    "seededData": "3 pending sales via GraphQL createSale",
+    "action": "confirmSale via UI confirm button",
+    "result": "Order ORD-20260610-5783 created, status=placed; sale transitioned pending -> confirmed",
+    "orderCodeFormatMatchesDiagram": true,
+    "consoleErrors": "none"
+  },
+  "screenshots": [
+    "cu06-orders-list-desktop.png",
+    "cu06-order-detail-desktop.png",
+    "cu06-order-state-action-desktop.png",
+    "cu06-orders-pedidos-tab-desktop.png",
+    "cu06-orders-responsive.png"
+  ]
+}
