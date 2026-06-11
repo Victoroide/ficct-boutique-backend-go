@@ -3,8 +3,9 @@ package graph
 import (
 	"context"
 
-	"github.com/ficct-boutique/backend-go/internal/models"
 	"github.com/google/uuid"
+
+	"github.com/ficct-boutique/backend-go/internal/models"
 )
 
 // ----- User -----

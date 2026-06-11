@@ -5,10 +5,11 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"github.com/ficct-boutique/backend-go/internal/middleware"
 	"github.com/ficct-boutique/backend-go/internal/models"
 	"github.com/ficct-boutique/backend-go/internal/service"
-	"github.com/google/uuid"
 )
 
 func (r *Resolver) Login(ctx context.Context, args struct {

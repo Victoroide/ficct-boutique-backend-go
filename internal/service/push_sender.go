@@ -10,9 +10,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/ficct-boutique/backend-go/internal/models"
 	"github.com/ficct-boutique/backend-go/internal/repository"
-	"github.com/google/uuid"
 )
 
 // PushSender posts notification payloads to the Expo Push API (or any

@@ -7,13 +7,14 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
+
 	"github.com/ficct-boutique/backend-go/internal/auth"
 	"github.com/ficct-boutique/backend-go/internal/middleware"
 	"github.com/ficct-boutique/backend-go/internal/models"
 	"github.com/ficct-boutique/backend-go/internal/service"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/require"
 )
 
 // fakeStore is a lightweight in-memory PushTokenStore used by the resolver

@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 
+	"github.com/google/uuid"
+
 	"github.com/ficct-boutique/backend-go/internal/auth"
 	"github.com/ficct-boutique/backend-go/internal/middleware"
-	"github.com/google/uuid"
 )
 
 var (

@@ -9,9 +9,10 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/ficct-boutique/backend-go/internal/models"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ficct-boutique/backend-go/internal/models"
 )
 
 // fakeStore is an in-memory implementation of PushTokenStore for tests.

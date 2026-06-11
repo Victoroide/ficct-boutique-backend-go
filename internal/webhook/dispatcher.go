@@ -12,9 +12,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ficct-boutique/backend-go/internal/repository"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
+
+	"github.com/ficct-boutique/backend-go/internal/repository"
 )
 
 type Dispatcher struct {

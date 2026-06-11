@@ -6,9 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ficct-boutique/backend-go/internal/models"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ficct-boutique/backend-go/internal/models"
 )
 
 func TestCreateSaleRequiresItems(t *testing.T) {

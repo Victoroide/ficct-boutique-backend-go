@@ -5,10 +5,11 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ficct-boutique/backend-go/internal/models"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/ficct-boutique/backend-go/internal/models"
 )
 
 type SalesRepo struct {

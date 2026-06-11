@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 
+	"github.com/google/uuid"
+
 	"github.com/ficct-boutique/backend-go/internal/middleware"
 	"github.com/ficct-boutique/backend-go/internal/repository"
-	"github.com/google/uuid"
 )
 
 func (r *Resolver) Me(ctx context.Context) (*UserResolver, error) {

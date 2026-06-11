@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 
+	"github.com/google/uuid"
+
 	"github.com/ficct-boutique/backend-go/internal/models"
 	"github.com/ficct-boutique/backend-go/internal/repository"
-	"github.com/google/uuid"
 )
 
 var ErrInvalidInput = errors.New("invalid input")
