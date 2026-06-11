@@ -32,6 +32,35 @@ func NewSalesRepo(pool *pgxpool.Pool) *SalesRepo {
 
 func (r *SalesRepo) Pool() *pgxpool.Pool { return r.pool }
 
+// EnsureCustomerForUser returns the customers row linked to the given user,
+// creating it from the user's profile when it does not exist yet.
+func (r *SalesRepo) EnsureCustomerForUser(ctx context.Context, tx pgx.Tx, userID uuid.UUID) (uuid.UUID, error) {
+	const q = `INSERT INTO customers (user_id, full_name)
+		SELECT u.id, u.full_name FROM users u WHERE u.id = $1
+		ON CONFLICT (user_id) DO UPDATE SET updated_at = NOW()
+		RETURNING id`
+	var id uuid.UUID
+	err := tx.QueryRow(ctx, q, userID).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return uuid.Nil, ErrNotFound
+	}
+	return id, err
+}
+
+// OwnerUserID returns the user id that owns a sale via its customer profile.
+// It returns ErrNotFound when the sale has no linked customer user.
+func (r *SalesRepo) OwnerUserID(ctx context.Context, saleID uuid.UUID) (uuid.UUID, error) {
+	const q = `SELECT c.user_id FROM sales s
+		JOIN customers c ON c.id = s.customer_id
+		WHERE s.id = $1 AND c.user_id IS NOT NULL`
+	var id uuid.UUID
+	err := r.pool.QueryRow(ctx, q, saleID).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return uuid.Nil, ErrNotFound
+	}
+	return id, err
+}
+
 func (r *SalesRepo) CreateWithItems(
 	ctx context.Context,
 	tx pgx.Tx,

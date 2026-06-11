@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/ficct-boutique/backend-go/internal/middleware"
+	"github.com/ficct-boutique/backend-go/internal/models"
 	"github.com/ficct-boutique/backend-go/internal/repository"
 )
 
@@ -250,7 +251,7 @@ func (r *Resolver) Orders(ctx context.Context, args struct {
 	Limit  *int32
 	Offset *int32
 }) ([]*OrderResolver, error) {
-	if err := requireAdminOrStaff(ctx); err != nil {
+	if err := requireAuth(ctx); err != nil {
 		return nil, err
 	}
 	limit := 50
@@ -261,7 +262,19 @@ func (r *Resolver) Orders(ctx context.Context, args struct {
 	if args.Offset != nil {
 		offset = int(*args.Offset)
 	}
-	rows, err := r.OrderRepo.List(ctx, args.Status, limit, offset)
+	var rows []models.Order
+	var err error
+	if isAdminOrStaff(ctx) {
+		rows, err = r.OrderRepo.List(ctx, args.Status, limit, offset)
+	} else {
+		// Customers only ever see their own orders, resolved through their
+		// customer profile (sales.customer_id -> customers.user_id).
+		uid, uerr := subjectUUID(ctx)
+		if uerr != nil {
+			return nil, ErrUnauthenticated
+		}
+		rows, err = r.OrderRepo.ListByUser(ctx, uid, args.Status, limit, offset)
+	}
 	if err != nil {
 		return nil, err
 	}

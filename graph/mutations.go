@@ -210,16 +210,23 @@ func (r *Resolver) CreateSale(ctx context.Context, args struct {
 		BranchID: args.Input.BranchID.Native(),
 		Items:    items,
 	}
-	if args.Input.CustomerID != nil {
-		v := args.Input.CustomerID.Native()
-		in.CustomerID = &v
-	}
-	// cashier from claims (if staff/admin)
 	claims, _ := middleware.ClaimsFromContext(ctx)
 	if claims != nil {
 		uid, err := parseUUIDFromClaim(claims.Subject)
 		if err == nil {
-			in.CashierID = &uid
+			if isAdminOrStaff(ctx) {
+				// Staff/admin act as the cashier and may sell on behalf of an
+				// explicitly chosen customer.
+				in.CashierID = &uid
+				if args.Input.CustomerID != nil {
+					v := args.Input.CustomerID.Native()
+					in.CustomerID = &v
+				}
+			} else {
+				// Customers always buy for themselves: link the sale to their
+				// own customer profile and ignore any client-sent customerId.
+				in.CustomerUserID = &uid
+			}
 		}
 	}
 
@@ -342,6 +349,18 @@ func (r *Resolver) UpdateInventoryReorderLevel(ctx context.Context, args struct 
 func (r *Resolver) ConfirmSale(ctx context.Context, args struct{ SaleID UUID }) (*OrderResolver, error) {
 	if err := requireAuth(ctx); err != nil {
 		return nil, err
+	}
+	// Customers may only confirm their own pending sales; staff/admin can
+	// confirm any sale (point-of-sale flow).
+	if !isAdminOrStaff(ctx) {
+		uid, err := subjectUUID(ctx)
+		if err != nil {
+			return nil, ErrUnauthenticated
+		}
+		owner, err := r.SalesRepo.OwnerUserID(ctx, args.SaleID.Native())
+		if err != nil || owner != uid {
+			return nil, ErrForbidden
+		}
 	}
 	res, err := r.SalesSvc.ConfirmSale(ctx, args.SaleID.Native())
 	if err != nil {

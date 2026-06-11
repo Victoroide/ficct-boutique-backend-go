@@ -32,12 +32,15 @@ type SalesService struct {
 }
 
 // CreateSaleInput describes a new sale: optional customer and cashier, the
-// branch it occurs at, and the line items being purchased.
+// branch it occurs at, and the line items being purchased. When
+// CustomerUserID is set (customer self-checkout) and CustomerID is nil, the
+// sale is linked to the customer profile of that user, creating it if needed.
 type CreateSaleInput struct {
-	CustomerID *uuid.UUID
-	BranchID   uuid.UUID
-	CashierID  *uuid.UUID
-	Items      []CreateSaleItemInput
+	CustomerID     *uuid.UUID
+	CustomerUserID *uuid.UUID
+	BranchID       uuid.UUID
+	CashierID      *uuid.UUID
+	Items          []CreateSaleItemInput
 }
 
 // CreateSaleItemInput is a single requested line item: a variant and quantity.
@@ -106,7 +109,16 @@ func (s *SalesService) CreateSale(ctx context.Context, in CreateSaleInput) (*mod
 	}
 	defer tx.Rollback(ctx)
 
-	sale, savedItems, err := s.sales.CreateWithItems(ctx, tx, in.CustomerID, in.BranchID, in.CashierID, items)
+	customerID := in.CustomerID
+	if customerID == nil && in.CustomerUserID != nil {
+		cid, cerr := s.sales.EnsureCustomerForUser(ctx, tx, *in.CustomerUserID)
+		if cerr != nil {
+			return nil, nil, cerr
+		}
+		customerID = &cid
+	}
+
+	sale, savedItems, err := s.sales.CreateWithItems(ctx, tx, customerID, in.BranchID, in.CashierID, items)
 	if err != nil {
 		return nil, nil, err
 	}
