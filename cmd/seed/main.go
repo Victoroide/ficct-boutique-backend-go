@@ -67,8 +67,8 @@ func main() {
 	// 3. Branches
 	existing, _ := branches.List(ctx)
 	if len(existing) == 0 {
-		lat1, lng1 := -17.7833, -63.1822
-		lat2, lng2 := -17.7900, -63.1700
+		lat1, lng1 := -17.7836, -63.1887 // Av. Cañoto 100 (primer anillo oeste)
+		lat2, lng2 := -17.7600, -63.1950 // Av. San Martín 200 (Equipetrol)
 		_, _ = branches.Create(ctx, &models.Branch{Code: "SC-01", Name: "Boutique Centro", Address: "Av. Cañoto 100, Santa Cruz", Latitude: &lat1, Longitude: &lng1})
 		_, _ = branches.Create(ctx, &models.Branch{Code: "SC-02", Name: "Boutique Equipetrol", Address: "Av. San Martín 200, Santa Cruz", Latitude: &lat2, Longitude: &lng2})
 		log.Info().Msg("seeded branches")
