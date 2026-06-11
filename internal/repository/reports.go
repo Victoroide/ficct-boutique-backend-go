@@ -8,14 +8,17 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// ReportsRepo provides read-only aggregate queries for reporting and dashboards.
 type ReportsRepo struct {
 	pool *pgxpool.Pool
 }
 
+// NewReportsRepo constructs a ReportsRepo backed by the given connection pool.
 func NewReportsRepo(pool *pgxpool.Pool) *ReportsRepo {
 	return &ReportsRepo{pool: pool}
 }
 
+// MonthlySaleRow is one month's confirmed-sales total and count.
 type MonthlySaleRow struct {
 	Month      time.Time
 	TotalSales float64
@@ -46,6 +49,7 @@ func (r *ReportsRepo) MonthlySales(ctx context.Context, months int) ([]MonthlySa
 	return out, rows.Err()
 }
 
+// PopularProductRow is one product's aggregated units sold and revenue.
 type PopularProductRow struct {
 	ProductID   uuid.UUID
 	ProductName string
@@ -78,6 +82,7 @@ func (r *ReportsRepo) PopularProducts(ctx context.Context, limit int) ([]Popular
 	return out, rows.Err()
 }
 
+// DashboardSummary is the set of headline metrics shown on the admin dashboard.
 type DashboardSummary struct {
 	TodaySales     float64
 	TodayOrders    int

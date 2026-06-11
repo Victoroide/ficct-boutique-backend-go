@@ -15,10 +15,12 @@ import (
 
 var ErrNotFound = errors.New("not found")
 
+// UserRepo provides data access for application user accounts.
 type UserRepo struct {
 	pool *pgxpool.Pool
 }
 
+// NewUserRepo constructs a UserRepo backed by the given connection pool.
 func NewUserRepo(pool *pgxpool.Pool) *UserRepo {
 	return &UserRepo{pool: pool}
 }

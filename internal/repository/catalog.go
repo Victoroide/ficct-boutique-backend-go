@@ -11,10 +11,13 @@ import (
 	"github.com/ficct-boutique/backend-go/internal/models"
 )
 
+// CatalogRepo provides data access for the product catalog: collections,
+// products, and their variants.
 type CatalogRepo struct {
 	pool *pgxpool.Pool
 }
 
+// NewCatalogRepo constructs a CatalogRepo backed by the given connection pool.
 func NewCatalogRepo(pool *pgxpool.Pool) *CatalogRepo {
 	return &CatalogRepo{pool: pool}
 }

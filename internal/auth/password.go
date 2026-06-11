@@ -19,6 +19,10 @@ const (
 	argonKeyLength   uint32 = 32
 )
 
+// HashPassword derives an Argon2id hash of the password with a fresh random
+// salt and returns it in the standard PHC-style encoded string (carrying the
+// algorithm version, parameters, salt, and digest). It requires at least 8
+// characters.
 func HashPassword(password string) (string, error) {
 	if len(password) < 8 {
 		return "", errors.New("password must be at least 8 characters")
@@ -39,6 +43,9 @@ func HashPassword(password string) (string, error) {
 	return encoded, nil
 }
 
+// VerifyPassword parses a PHC-style Argon2id encoded hash, recomputes the
+// digest from the candidate password using the embedded parameters, and reports
+// whether they match using a constant-time comparison.
 func VerifyPassword(password, encoded string) (bool, error) {
 	parts := strings.Split(encoded, "$")
 	if len(parts) != 6 || parts[1] != "argon2id" {

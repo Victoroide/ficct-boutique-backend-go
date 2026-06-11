@@ -12,16 +12,21 @@ import (
 
 var ErrInvalidInput = errors.New("invalid input")
 
+// CatalogService implements the product catalog use cases (products, variants,
+// and per-branch inventory), enforcing input validation over the repositories.
 type CatalogService struct {
 	catalog   *repository.CatalogRepo
 	branches  *repository.BranchRepo
 	inventory *repository.InventoryRepo
 }
 
+// NewCatalogService constructs a CatalogService from the catalog, branch, and
+// inventory repositories.
 func NewCatalogService(c *repository.CatalogRepo, b *repository.BranchRepo, i *repository.InventoryRepo) *CatalogService {
 	return &CatalogService{catalog: c, branches: b, inventory: i}
 }
 
+// CreateProductInput carries the fields required to create a catalog product.
 type CreateProductInput struct {
 	CollectionID    *uuid.UUID
 	SKU             string
@@ -34,6 +39,8 @@ type CreateProductInput struct {
 	ImageDocumentID *uuid.UUID
 }
 
+// CreateProduct validates the input (SKU, name, category required; non-negative
+// price; defaulting currency to BOB) and persists a new product.
 func (s *CatalogService) CreateProduct(ctx context.Context, in CreateProductInput) (*models.Product, error) {
 	if in.SKU == "" || in.Name == "" || in.Category == "" {
 		return nil, ErrInvalidInput
@@ -57,6 +64,7 @@ func (s *CatalogService) CreateProduct(ctx context.Context, in CreateProductInpu
 	})
 }
 
+// CreateVariantInput carries the fields required to create a product variant.
 type CreateVariantInput struct {
 	ProductID     uuid.UUID
 	SKU           string
@@ -65,6 +73,8 @@ type CreateVariantInput struct {
 	PriceOverride *float64
 }
 
+// CreateVariant validates the input (SKU, size, and color required) and
+// persists a new variant of an existing product.
 func (s *CatalogService) CreateVariant(ctx context.Context, in CreateVariantInput) (*models.ProductVariant, error) {
 	if in.SKU == "" || in.Size == "" || in.Color == "" {
 		return nil, ErrInvalidInput
@@ -78,6 +88,8 @@ func (s *CatalogService) CreateVariant(ctx context.Context, in CreateVariantInpu
 	})
 }
 
+// UpsertInventory sets the stock quantity and reorder level for a variant at a
+// branch, rejecting negative values.
 func (s *CatalogService) UpsertInventory(ctx context.Context, variantID, branchID uuid.UUID, quantity, reorderLevel int) (*models.Inventory, error) {
 	if quantity < 0 || reorderLevel < 0 {
 		return nil, ErrInvalidInput

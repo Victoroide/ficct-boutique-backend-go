@@ -11,10 +11,12 @@ import (
 	"github.com/ficct-boutique/backend-go/internal/models"
 )
 
+// PushTokenRepo provides data access for device push notification tokens.
 type PushTokenRepo struct {
 	pool *pgxpool.Pool
 }
 
+// NewPushTokenRepo constructs a PushTokenRepo backed by the given connection pool.
 func NewPushTokenRepo(pool *pgxpool.Pool) *PushTokenRepo {
 	return &PushTokenRepo{pool: pool}
 }

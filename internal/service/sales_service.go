@@ -18,6 +18,10 @@ var (
 	ErrSaleNotPending = errors.New("sale is not pending")
 )
 
+// SalesService implements the point-of-sale use cases: building draft sales
+// from current catalog prices and confirming them, which decrements stock,
+// creates an order, and (when configured) enqueues a webhook in the outbox,
+// all within a single database transaction.
 type SalesService struct {
 	sales            *repository.SalesRepo
 	inventory        *repository.InventoryRepo
@@ -27,6 +31,8 @@ type SalesService struct {
 	webhookTargetURL string
 }
 
+// CreateSaleInput describes a new sale: optional customer and cashier, the
+// branch it occurs at, and the line items being purchased.
 type CreateSaleInput struct {
 	CustomerID *uuid.UUID
 	BranchID   uuid.UUID
@@ -34,11 +40,14 @@ type CreateSaleInput struct {
 	Items      []CreateSaleItemInput
 }
 
+// CreateSaleItemInput is a single requested line item: a variant and quantity.
 type CreateSaleItemInput struct {
 	VariantID uuid.UUID
 	Quantity  int
 }
 
+// SalesServiceDeps bundles the repositories and configuration needed to build a
+// SalesService.
 type SalesServiceDeps struct {
 	Sales            *repository.SalesRepo
 	Inventory        *repository.InventoryRepo
@@ -48,6 +57,7 @@ type SalesServiceDeps struct {
 	WebhookTargetURL string
 }
 
+// NewSalesService constructs a SalesService from its dependencies.
 func NewSalesService(d SalesServiceDeps) *SalesService {
 	return &SalesService{
 		sales:            d.Sales,
@@ -59,6 +69,10 @@ func NewSalesService(d SalesServiceDeps) *SalesService {
 	}
 }
 
+// CreateSale prices each line item from the current product/variant catalog,
+// then persists a pending sale with its items in a transaction. It returns
+// ErrEmptySaleItems when no items are supplied. No stock is reserved until the
+// sale is confirmed.
 func (s *SalesService) CreateSale(ctx context.Context, in CreateSaleInput) (*models.Sale, []models.SaleItem, error) {
 	if len(in.Items) == 0 {
 		return nil, nil, ErrEmptySaleItems
@@ -102,17 +116,22 @@ func (s *SalesService) CreateSale(ctx context.Context, in CreateSaleInput) (*mod
 	return sale, savedItems, nil
 }
 
+// ConfirmSaleResult pairs the confirmed sale with the order created for it.
 type ConfirmSaleResult struct {
 	Sale  *models.Sale
 	Order *models.Order
 }
 
+// SaleConfirmedCustomerPayload is the customer section of the sale.confirmed
+// webhook payload.
 type SaleConfirmedCustomerPayload struct {
 	ID    *uuid.UUID `json:"id"`
 	Name  string     `json:"name"`
 	Email string     `json:"email"`
 }
 
+// SaleConfirmedWebhookPayload is the JSON body enqueued in the outbox and
+// delivered to the configured webhook target when a sale is confirmed.
 type SaleConfirmedWebhookPayload struct {
 	Event       string                       `json:"event"`
 	SaleID      uuid.UUID                    `json:"sale_id"`
@@ -126,6 +145,11 @@ type SaleConfirmedWebhookPayload struct {
 	Customer    SaleConfirmedCustomerPayload `json:"customer"`
 }
 
+// ConfirmSale confirms a pending sale within a single transaction: it
+// decrements stock for each item, marks the sale confirmed, creates an order
+// with a generated code, and (when a webhook target is configured) enqueues a
+// sale.confirmed event in the outbox. It returns ErrSaleNotPending if the sale
+// is not in the pending state.
 func (s *SalesService) ConfirmSale(ctx context.Context, saleID uuid.UUID) (*ConfirmSaleResult, error) {
 	tx, err := s.sales.Pool().Begin(ctx)
 	if err != nil {

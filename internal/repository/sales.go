@@ -12,16 +12,20 @@ import (
 	"github.com/ficct-boutique/backend-go/internal/models"
 )
 
+// SalesRepo provides data access for sales and their line items.
 type SalesRepo struct {
 	pool *pgxpool.Pool
 }
 
+// CustomerContact is the minimal customer identity (name and email) resolved
+// for a sale, used to populate the confirmation webhook payload.
 type CustomerContact struct {
 	ID    uuid.UUID
 	Name  string
 	Email string
 }
 
+// NewSalesRepo constructs a SalesRepo backed by the given connection pool.
 func NewSalesRepo(pool *pgxpool.Pool) *SalesRepo {
 	return &SalesRepo{pool: pool}
 }

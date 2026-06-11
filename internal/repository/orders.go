@@ -11,10 +11,12 @@ import (
 	"github.com/ficct-boutique/backend-go/internal/models"
 )
 
+// OrderRepo provides data access for fulfillment orders derived from sales.
 type OrderRepo struct {
 	pool *pgxpool.Pool
 }
 
+// NewOrderRepo constructs an OrderRepo backed by the given connection pool.
 func NewOrderRepo(pool *pgxpool.Pool) *OrderRepo {
 	return &OrderRepo{pool: pool}
 }

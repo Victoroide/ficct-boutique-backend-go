@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// Role is a user's authorization role.
 type Role string
 
 const (
@@ -15,6 +16,7 @@ const (
 	RoleSystem   Role = "system"
 )
 
+// User is an application user account.
 type User struct {
 	ID           uuid.UUID
 	Email        string
@@ -26,6 +28,7 @@ type User struct {
 	UpdatedAt    time.Time
 }
 
+// Customer is a buyer profile, optionally linked to a user account.
 type Customer struct {
 	ID         uuid.UUID
 	UserID     *uuid.UUID
@@ -37,6 +40,7 @@ type Customer struct {
 	UpdatedAt  time.Time
 }
 
+// Branch is a physical store location.
 type Branch struct {
 	ID        uuid.UUID
 	Code      string
@@ -50,6 +54,7 @@ type Branch struct {
 	UpdatedAt time.Time
 }
 
+// Collection is a named grouping of products (e.g. a seasonal line).
 type Collection struct {
 	ID          uuid.UUID
 	Name        string
@@ -60,6 +65,7 @@ type Collection struct {
 	UpdatedAt   time.Time
 }
 
+// Product is a catalog item, priced with a base price and sold via its variants.
 type Product struct {
 	ID              uuid.UUID
 	CollectionID    *uuid.UUID
@@ -76,6 +82,8 @@ type Product struct {
 	UpdatedAt       time.Time
 }
 
+// ProductVariant is a sellable variation of a product (size/color), optionally
+// overriding the product's base price.
 type ProductVariant struct {
 	ID            uuid.UUID
 	ProductID     uuid.UUID
@@ -88,6 +96,7 @@ type ProductVariant struct {
 	UpdatedAt     time.Time
 }
 
+// Inventory is the stock level of a variant at a specific branch.
 type Inventory struct {
 	ID           uuid.UUID
 	VariantID    uuid.UUID
@@ -97,6 +106,7 @@ type Inventory struct {
 	UpdatedAt    time.Time
 }
 
+// SaleStatus is the lifecycle state of a sale.
 type SaleStatus string
 
 const (
@@ -105,6 +115,7 @@ const (
 	SaleStatusCancelled SaleStatus = "cancelled"
 )
 
+// Sale is a point-of-sale transaction with its computed totals.
 type Sale struct {
 	ID          uuid.UUID
 	CustomerID  *uuid.UUID
@@ -120,6 +131,7 @@ type Sale struct {
 	UpdatedAt   time.Time
 }
 
+// SaleItem is one priced line within a sale.
 type SaleItem struct {
 	ID        uuid.UUID
 	SaleID    uuid.UUID
@@ -130,6 +142,7 @@ type SaleItem struct {
 	CreatedAt time.Time
 }
 
+// OrderStatus is the fulfillment state of an order.
 type OrderStatus string
 
 const (
@@ -140,6 +153,7 @@ const (
 	OrderStatusCancelled OrderStatus = "cancelled"
 )
 
+// Order is a fulfillment record created from a confirmed sale.
 type Order struct {
 	ID        uuid.UUID
 	SaleID    uuid.UUID
@@ -150,6 +164,7 @@ type Order struct {
 	UpdatedAt time.Time
 }
 
+// PushPlatform identifies the device platform a push token belongs to.
 type PushPlatform string
 
 const (
@@ -158,6 +173,7 @@ const (
 	PushPlatformWeb     PushPlatform = "web"
 )
 
+// PushToken is a registered device token for delivering push notifications.
 type PushToken struct {
 	ID         uuid.UUID
 	UserID     uuid.UUID
@@ -170,6 +186,7 @@ type PushToken struct {
 	UpdatedAt  time.Time
 }
 
+// WebhookEvent is a transactional-outbox row tracking the delivery of a webhook.
 type WebhookEvent struct {
 	ID            uuid.UUID
 	EventType     string

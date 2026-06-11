@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// Role is the authorization role carried in an access token's claims.
 type Role string
 
 const (
@@ -18,6 +19,8 @@ const (
 	RoleSystem   Role = "system"
 )
 
+// Claims is the JWT payload for an access token: the standard registered
+// claims plus the user's role, optional branch scope, and email.
 type Claims struct {
 	Role     Role       `json:"role"`
 	BranchID *uuid.UUID `json:"branch_id,omitempty"`
@@ -25,6 +28,8 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
+// TokenIssuer signs RS256 access tokens for a fixed issuer/audience using the
+// private half of a KeyPair.
 type TokenIssuer struct {
 	keys      *KeyPair
 	issuer    string
@@ -32,6 +37,8 @@ type TokenIssuer struct {
 	accessTTL time.Duration
 }
 
+// NewIssuer constructs a TokenIssuer. It returns an error if the key pair has
+// no private key, since signing would be impossible.
 func NewIssuer(keys *KeyPair, issuer string, audience []string, accessTTL time.Duration) (*TokenIssuer, error) {
 	if keys.Private == nil {
 		return nil, errors.New("issuer requires a private key")
@@ -44,6 +51,9 @@ func NewIssuer(keys *KeyPair, issuer string, audience []string, accessTTL time.D
 	}, nil
 }
 
+// IssueAccess signs a new access token for the given user and returns the
+// signed string together with its expiry time. The token carries the role and
+// optional branch scope and is stamped with the key's ID in the "kid" header.
 func (t *TokenIssuer) IssueAccess(userID uuid.UUID, email string, role Role, branchID *uuid.UUID) (string, time.Time, error) {
 	now := time.Now().UTC()
 	exp := now.Add(t.accessTTL)
@@ -70,16 +80,22 @@ func (t *TokenIssuer) IssueAccess(userID uuid.UUID, email string, role Role, bra
 	return signed, exp, nil
 }
 
+// TokenVerifier validates RS256 access tokens against the public half of a
+// KeyPair and the expected issuer and audience.
 type TokenVerifier struct {
 	keys     *KeyPair
 	issuer   string
 	audience string
 }
 
+// NewVerifier constructs a TokenVerifier bound to the given issuer and audience.
 func NewVerifier(keys *KeyPair, issuer, audience string) *TokenVerifier {
 	return &TokenVerifier{keys: keys, issuer: issuer, audience: audience}
 }
 
+// Verify parses and validates a signed token string, enforcing the RS256
+// signing method, issuer, and audience. It returns the decoded claims or an
+// error if the token is invalid, expired, or fails any check.
 func (v *TokenVerifier) Verify(tokenStr string) (*Claims, error) {
 	claims := &Claims{}
 	parsed, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (interface{}, error) {

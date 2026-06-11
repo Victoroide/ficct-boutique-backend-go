@@ -14,10 +14,12 @@ import (
 
 var ErrInsufficientStock = errors.New("insufficient stock")
 
+// InventoryRepo provides data access for per-branch variant stock levels.
 type InventoryRepo struct {
 	pool *pgxpool.Pool
 }
 
+// NewInventoryRepo constructs an InventoryRepo backed by the given connection pool.
 func NewInventoryRepo(pool *pgxpool.Pool) *InventoryRepo {
 	return &InventoryRepo{pool: pool}
 }

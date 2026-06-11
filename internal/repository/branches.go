@@ -11,10 +11,12 @@ import (
 	"github.com/ficct-boutique/backend-go/internal/models"
 )
 
+// BranchRepo provides data access for store branches.
 type BranchRepo struct {
 	pool *pgxpool.Pool
 }
 
+// NewBranchRepo constructs a BranchRepo backed by the given connection pool.
 func NewBranchRepo(pool *pgxpool.Pool) *BranchRepo {
 	return &BranchRepo{pool: pool}
 }

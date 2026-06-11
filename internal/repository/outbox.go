@@ -11,10 +11,13 @@ import (
 	"github.com/ficct-boutique/backend-go/internal/models"
 )
 
+// OutboxRepo provides data access for the transactional webhook outbox used to
+// deliver events reliably.
 type OutboxRepo struct {
 	pool *pgxpool.Pool
 }
 
+// NewOutboxRepo constructs an OutboxRepo backed by the given connection pool.
 func NewOutboxRepo(pool *pgxpool.Pool) *OutboxRepo {
 	return &OutboxRepo{pool: pool}
 }

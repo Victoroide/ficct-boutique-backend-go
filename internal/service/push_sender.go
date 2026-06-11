@@ -49,6 +49,7 @@ type PushTokenStore interface {
 	DeactivateByToken(ctx context.Context, token string) error
 }
 
+// ExpoMessage is a single push notification message in the Expo Push API request body.
 type ExpoMessage struct {
 	To       string                 `json:"to"`
 	Title    string                 `json:"title,omitempty"`
@@ -62,6 +63,8 @@ type expoTicketResponse struct {
 	Data []ExpoTicket `json:"data"`
 }
 
+// ExpoTicket is a single per-message result returned by the Expo Push API:
+// status "ok" with a receipt ID, or "error" with a message and details.
 type ExpoTicket struct {
 	Status  string `json:"status"`
 	ID      string `json:"id,omitempty"`
@@ -80,6 +83,8 @@ type SendResult struct {
 	Tickets     []ExpoTicket
 }
 
+// NewPushSender constructs a PushSender for the given Expo endpoint and access
+// token, backed by the supplied token store and a client with a 15s timeout.
 func NewPushSender(endpoint, accessToken string, repo PushTokenStore) *PushSender {
 	return &PushSender{
 		endpoint:    endpoint,
